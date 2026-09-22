@@ -87,7 +87,7 @@ export function TablePage() {
                   className={`table-seat ${className} ${player ? 'table-seat-occupied' : 'table-seat-open'} ${isSelected ? 'table-seat-selected' : ''}`}
                   key={seat}
                   type="button"
-                  onClick={() => { if (!player) setSelectedSeat(seat) }}
+                  onClick={() => { if (!player) setSelectedSeat(isSelected ? null : seat) }}
                   disabled={Boolean(player)}
                   aria-label={label}
                   aria-pressed={isSelected}
