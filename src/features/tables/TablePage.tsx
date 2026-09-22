@@ -4,7 +4,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { getMe } from '../../api/auth'
 import { authStorage } from '../../api/authStorage'
-import { claimTableSeat, getTableInfo, getTableJoinToken, getTableLobbyUsers } from '../../api/tableLobby'
+import { claimTableSeat, getTableInfo, getTableJoinToken, getTableLobbyUsers, releaseTableSeat } from '../../api/tableLobby'
 import type { LobbyUserResponse, TableInfoResponse, TableSeatInfo } from './table.types'
 import { getPlayerInitials, seatPositions } from './tableSeatLayout'
 import { buildTableJoinUrl } from './tableShare'
@@ -20,11 +20,11 @@ export function TablePage() {
   const location = useLocation()
   const { tableId: routeTableId } = useParams<{ tableId: string }>()
   const tableState = location.state as TableLocationState | null
-  const [currentUserName, setCurrentUserName] = useState('You')
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null)
   const [tableInfo, setTableInfo] = useState<TableInfoResponse | null>(null)
   const [isTableLoading, setIsTableLoading] = useState(true)
   const [tableError, setTableError] = useState<string | null>(null)
-  const [claimingSeatId, setClaimingSeatId] = useState<string | null>(null)
+  const [seatActionId, setSeatActionId] = useState<string | null>(null)
   const [seatActionError, setSeatActionError] = useState<string | null>(null)
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [joinToken, setJoinToken] = useState<string | null>(tableState?.joinToken ?? null)
@@ -126,10 +126,10 @@ export function TablePage() {
   }
 
   async function handleSeatClaim(seat: TableSeatInfo) {
-    if (!tableId || seat.user || claimingSeatId) return
+    if (!tableId || seat.user || seatActionId) return
 
     setSeatActionError(null)
-    setClaimingSeatId(seat.id)
+    setSeatActionId(seat.id)
     try {
       await claimTableSeat(tableId, seat.id)
       await loadTableInfo()
@@ -141,7 +141,32 @@ export function TablePage() {
         setSeatActionError('Unable to claim that seat. Please try again.')
       }
     } finally {
-      setClaimingSeatId(null)
+      setSeatActionId(null)
+    }
+  }
+
+  async function handleSeatRelease(seat: TableSeatInfo) {
+    if (!tableId || !seat.user || seat.user.username !== currentUserName || seatActionId) return
+
+    setSeatActionError(null)
+    setSeatActionId(seat.id)
+    try {
+      await releaseTableSeat(tableId, seat.id)
+      setTableInfo((currentTable) => currentTable && {
+        ...currentTable,
+        seats: currentTable.seats.map((currentSeat) => currentSeat.id === seat.id ? { ...currentSeat, user: null } : currentSeat),
+      })
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        setSeatActionError('You can only release your own seat. The table has been refreshed.')
+      } else if (axios.isAxiosError(error) && error.response?.status === 404) {
+        setSeatActionError('That seat is no longer available. The table has been refreshed.')
+      } else {
+        setSeatActionError('Unable to release that seat. The table has been refreshed.')
+      }
+      await loadTableInfo()
+    } finally {
+      setSeatActionId(null)
     }
   }
 
@@ -190,20 +215,20 @@ export function TablePage() {
               {seatPositions.map(({ seat, className }) => {
                 const seatInfo = seatsByOrder.get(seat)
                 const username = seatInfo?.user?.username
-                const isCurrentUser = username === currentUserName
-                const isClaiming = seatInfo?.id === claimingSeatId
-                const label = username ? `${username}, seat ${seat}` : `Choose seat ${seat}`
+                const isCurrentUser = Boolean(currentUserName && username === currentUserName)
+                const isActionInProgress = seatInfo?.id === seatActionId
+                const label = isCurrentUser ? `Release your seat ${seat}` : username ? `${username}, seat ${seat}` : `Choose seat ${seat}`
                 return (
                   <button
                     className={`table-seat ${className} ${username ? 'table-seat-occupied' : 'table-seat-open'} ${isCurrentUser ? 'table-seat-selected' : ''}`}
                     key={seatInfo?.id ?? seat}
                     type="button"
-                    onClick={() => { if (seatInfo && !seatInfo.user) void handleSeatClaim(seatInfo) }}
-                    disabled={!seatInfo || Boolean(username) || Boolean(claimingSeatId)}
-                    aria-label={isClaiming ? `Claiming seat ${seat}` : label}
+                    onClick={() => { if (!seatInfo) return; if (isCurrentUser) void handleSeatRelease(seatInfo); else if (!seatInfo.user) void handleSeatClaim(seatInfo) }}
+                    disabled={!seatInfo || Boolean(seatActionId) || (Boolean(username) && !isCurrentUser)}
+                    aria-label={isActionInProgress ? `${isCurrentUser ? 'Releasing' : 'Claiming'} seat ${seat}` : label}
                     aria-pressed={isCurrentUser}
                   >
-                    <span className="table-seat-inner">{isClaiming ? '…' : username ? getPlayerInitials(username) : '＋'}</span>
+                    <span className="table-seat-inner">{isActionInProgress ? '…' : username ? getPlayerInitials(username) : '＋'}</span>
                     <span className="table-seat-number">{seat}</span>
                     {isCurrentUser && <span className="table-seat-you">You</span>}
                   </button>

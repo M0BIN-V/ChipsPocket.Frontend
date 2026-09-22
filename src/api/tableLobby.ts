@@ -24,3 +24,7 @@ export async function getTableInfo(tableId: string): Promise<TableInfoResponse> 
 export async function claimTableSeat(tableId: string, seatId: string): Promise<void> {
   await apiClient.post(`/api/tables/${encodeURIComponent(tableId)}/seats/${encodeURIComponent(seatId)}/claim`)
 }
+
+export async function releaseTableSeat(tableId: string, seatId: string): Promise<void> {
+  await apiClient.post(`/api/tables/${encodeURIComponent(tableId)}/seats/${encodeURIComponent(seatId)}/release`)
+}
