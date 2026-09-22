@@ -13,12 +13,12 @@ export interface SelectedChip {
 
 export interface CreateTableForm {
   tableName: string
-  seatCount: number
-  chips: SelectedChip[]
 }
 
 export interface CreateTableRequest {
   tableName: string
-  seatCount: number
-  chips: Array<{ appearanceId: string; value: number }>
+}
+
+export interface CreateTableResponse {
+  id: string
 }
