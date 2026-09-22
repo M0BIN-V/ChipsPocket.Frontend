@@ -6,6 +6,7 @@ import { LoginPage } from '../features/auth/LoginPage'
 import { RegisterPage } from '../features/auth/RegisterPage'
 import { HomePage } from '../features/tables/HomePage'
 import { CreateTablePage } from '../features/tables/CreateTablePage'
+import { TablePage } from '../features/tables/TablePage'
 
 function AuthenticatedRoute() {
     return authStorage.getAccessToken() ? <HomePage /> : <Navigate to="/login" replace />
@@ -13,6 +14,10 @@ function AuthenticatedRoute() {
 
 function CreateTableRoute() {
     return authStorage.getAccessToken() ? <CreateTablePage /> : <Navigate to="/login" replace />
+}
+
+function TableRoute() {
+    return authStorage.getAccessToken() ? <TablePage /> : <Navigate to="/login" replace />
 }
 
 function GuestRoute({ children }: { children: ReactElement }) {
@@ -27,6 +32,7 @@ export function AppRoutes() {
             <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
             <Route path="/authenticated" element={<AuthenticatedRoute />} />
             <Route path="/create-table" element={<CreateTableRoute />} />
+            <Route path="/table/:tableId" element={<TableRoute />} />
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     )

@@ -37,9 +37,8 @@ export function CreateTablePage() {
     setSuccessMessage(null)
     setIsSubmitting(true)
     try {
-      await createTable({ tableName: trimmedName })
-      setSuccessMessage('Table created successfully.')
-      setTableName(trimmedName)
+      const createdTable = await createTable({ tableName: trimmedName })
+      navigate(`/table/${createdTable.id}`, { state: { tableName: trimmedName, tableId: createdTable.id } })
     } catch (error: unknown) {
       setErrorMessage(getCreateTableError(error))
     } finally {

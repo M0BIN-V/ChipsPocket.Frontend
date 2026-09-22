@@ -13,3 +13,42 @@
 
 body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input { font: inherit; }
+
+.poker-table-stage { position: relative; width: min(100%, 760px); aspect-ratio: 1.55; margin-inline: auto; }
+.poker-table-surface { position: absolute; inset: 14% 11%; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 10px solid #242b1f; border-radius: 50%; background: radial-gradient(ellipse at 50% 40%, #304b35 0%, #203b2c 55%, #172b23 100%); box-shadow: inset 0 0 0 2px #526244, inset 0 12px 20px #0d1b15aa, 0 16px 24px #00000066; }
+.poker-table-surface::after { position: absolute; inset: 8%; border: 1px solid #a4bc6a55; border-radius: 50%; content: ''; }
+.table-felt-marking, .table-center-label { position: relative; z-index: 1; text-align: center; color: #b9cc8e66; }
+.table-felt-marking { position: absolute; top: 27%; left: 50%; display: flex; width: min(62%, 13rem); flex-direction: column; align-items: center; gap: 0.35rem; transform: translate(-50%, -50%); font-family: 'Space Grotesk', sans-serif; font-size: clamp(0.5rem, 1.35vw, 0.7rem); font-weight: 700; line-height: 1.1; letter-spacing: 0.24em; white-space: nowrap; }
+.table-felt-marking small { font-family: 'DM Sans', sans-serif; font-size: clamp(0.5rem, 1.1vw, 0.62rem); line-height: 1; letter-spacing: 0.26em; }
+.table-center-label { position: absolute; top: 58%; left: 50%; display: flex; flex-direction: column; align-items: center; gap: 0.6rem; width: clamp(6rem, 24%, 10rem); padding: 0.35rem 0.5rem; transform: translate(-50%, -50%); font-family: 'Space Grotesk', sans-serif; font-size: clamp(0.5rem, 1.2vw, 0.66rem); font-weight: 600; line-height: 1.25; letter-spacing: 0.2em; text-align: center; white-space: nowrap; }
+.table-center-label strong { display: block; font-size: clamp(1.45rem, 3.6vw, 2.1rem); font-weight: 500; line-height: 0.9; }
+.table-seat { position: absolute; z-index: 2; display: flex; width: clamp(3.25rem, 10vw, 4.75rem); height: clamp(3.25rem, 10vw, 4.75rem); align-items: center; justify-content: center; border-radius: 50%; transform: translate(-50%, -50%); transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease; }
+.table-seat-open { border: 2px dashed #899b7d; background: #1c251c; color: #c5d2b2; cursor: pointer; box-shadow: 0 6px 12px #00000030; }
+.table-seat-open:hover { border-color: #b7d334; background: #26321f; transform: translate(-50%, -50%) scale(1.06); }
+.table-seat-open:focus-visible { outline: 3px solid #d9ed7a; outline-offset: 4px; }
+.table-seat-occupied { border: 2px solid #586653; background: #303b2d; color: #d1dbc7; cursor: not-allowed; }
+.table-seat-selected { border: 3px solid #b7d334; background: #b7d334; color: #151712; box-shadow: 0 0 0 5px #b7d33433, 0 8px 18px #00000055; }
+.table-seat-inner { font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.05rem, 3vw, 1.4rem); font-weight: 700; }
+.table-seat-open .table-seat-inner { font-size: clamp(1.35rem, 3.5vw, 1.8rem); font-weight: 400; }
+.table-seat-number { position: absolute; bottom: -1.35rem; color: #6f796c; font-size: 0.68rem; }
+.table-seat-you { position: absolute; bottom: -2.45rem; color: #d9ed7a; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.seat-position-1 { left: 50%; top: 3%; }
+.seat-position-2 { left: 25%; top: 14%; }
+.seat-position-3 { left: 9%; top: 32%; }
+.seat-position-4 { left: 7%; top: 68%; }
+.seat-position-5 { left: 25%; top: 86%; }
+.seat-position-6 { left: 50%; top: 97%; }
+.seat-position-7 { left: 75%; top: 86%; }
+.seat-position-8 { left: 93%; top: 68%; }
+.seat-position-9 { left: 91%; top: 32%; }
+.seat-position-10 { left: 75%; top: 14%; }
+.legend-dot { display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 50%; }
+.legend-dot-open { border: 1px solid #899b7d; }
+.legend-dot-taken { background: #586653; }
+.legend-dot-yours { background: #b7d334; }
+
+@media (max-width: 480px) {
+  .poker-table-surface { border-width: 7px; }
+  .table-seat-number { display: none; }
+  .table-seat-you { bottom: -1.4rem; }
+}
