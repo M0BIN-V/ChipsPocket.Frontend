@@ -20,3 +20,7 @@ export async function getTableInfo(tableId: string): Promise<TableInfoResponse> 
   const response = await apiClient.get<TableInfoResponse>(`/api/tables/${encodeURIComponent(tableId)}`)
   return response.data
 }
+
+export async function claimTableSeat(tableId: string, seatId: string): Promise<void> {
+  await apiClient.post(`/api/tables/${encodeURIComponent(tableId)}/seats/${encodeURIComponent(seatId)}/claim`)
+}

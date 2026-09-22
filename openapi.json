@@ -192,6 +192,53 @@
         }
       }
     },
+    "/api/tables/{tableId}/seats/{seatId}/claim": {
+      "post": {
+        "tags": [
+          "Tables"
+        ],
+        "summary": "Claim a table seat",
+        "description": "Claims a seat at a poker table for the authenticated user.\r\n\r\nThe user must be a member of the table's lobby.\r\n\r\nIf the user is already sitting at another seat at the same\r\ntable, their previous seat is released and the requested\r\nseat becomes their new seat.\r\n\r\nThe requested seat must belong to the specified table and\r\nmust not already be occupied by another user.",
+        "parameters": [
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "seatId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tables/lobby/{tableId}/join-token": {
       "get": {
         "tags": [

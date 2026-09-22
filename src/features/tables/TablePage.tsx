@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import axios from 'axios'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { getMe } from '../../api/auth'
 import { authStorage } from '../../api/authStorage'
-import { getTableJoinToken, getTableLobbyUsers } from '../../api/tableLobby'
-import type { LobbyUserResponse } from './table.types'
-import { getPlayerInitials, mockPlayers, seatPositions } from './mockTableData'
+import { claimTableSeat, getTableInfo, getTableJoinToken, getTableLobbyUsers } from '../../api/tableLobby'
+import type { LobbyUserResponse, TableInfoResponse, TableSeatInfo } from './table.types'
+import { getPlayerInitials, seatPositions } from './tableSeatLayout'
 import { buildTableJoinUrl } from './tableShare'
 
 interface TableLocationState {
@@ -20,7 +21,11 @@ export function TablePage() {
   const { tableId: routeTableId } = useParams<{ tableId: string }>()
   const tableState = location.state as TableLocationState | null
   const [currentUserName, setCurrentUserName] = useState('You')
-  const [selectedSeat, setSelectedSeat] = useState<number | null>(null)
+  const [tableInfo, setTableInfo] = useState<TableInfoResponse | null>(null)
+  const [isTableLoading, setIsTableLoading] = useState(true)
+  const [tableError, setTableError] = useState<string | null>(null)
+  const [claimingSeatId, setClaimingSeatId] = useState<string | null>(null)
+  const [seatActionError, setSeatActionError] = useState<string | null>(null)
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [joinToken, setJoinToken] = useState<string | null>(tableState?.joinToken ?? null)
   const [shareError, setShareError] = useState<string | null>(null)
@@ -29,8 +34,46 @@ export function TablePage() {
   const [isLobbyLoading, setIsLobbyLoading] = useState(false)
   const [lobbyError, setLobbyError] = useState<string | null>(null)
   const tableId = routeTableId?.trim() || tableState?.tableId?.trim()
-  const tableName = tableState?.tableName ?? 'Poker table'
+  const tableName = tableInfo?.name ?? tableState?.tableName ?? 'Poker table'
   const joinUrl = joinToken ? buildTableJoinUrl(joinToken) : null
+  const tableLoadError = tableError ?? (!tableId ? 'Table information is unavailable.' : null)
+
+  const loadTableInfo = useCallback(async () => {
+    if (!tableId) {
+      setIsTableLoading(false)
+      setTableError('Table information is unavailable.')
+      return null
+    }
+
+    setIsTableLoading(true)
+    setTableError(null)
+    try {
+      const table = await getTableInfo(tableId)
+      setTableInfo(table)
+      return table
+    } catch {
+      setTableError('Unable to load the table seats. Please try again.')
+      return null
+    } finally {
+      setIsTableLoading(false)
+    }
+  }, [tableId])
+
+  useEffect(() => {
+    if (!tableId) return
+
+    let isMounted = true
+    getTableInfo(tableId).then((table) => {
+      if (!isMounted) return
+      setTableInfo(table)
+      setTableError(null)
+    }).catch(() => {
+      if (isMounted) setTableError('Unable to load the table seats. Please try again.')
+    }).finally(() => {
+      if (isMounted) setIsTableLoading(false)
+    })
+    return () => { isMounted = false }
+  }, [tableId])
 
   useEffect(() => {
     if (tableState?.joinToken) return
@@ -82,13 +125,33 @@ export function TablePage() {
     })
   }
 
+  async function handleSeatClaim(seat: TableSeatInfo) {
+    if (!tableId || seat.user || claimingSeatId) return
+
+    setSeatActionError(null)
+    setClaimingSeatId(seat.id)
+    try {
+      await claimTableSeat(tableId, seat.id)
+      await loadTableInfo()
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        setSeatActionError('That seat was just taken. The table has been refreshed.')
+        await loadTableInfo()
+      } else {
+        setSeatActionError('Unable to claim that seat. Please try again.')
+      }
+    } finally {
+      setClaimingSeatId(null)
+    }
+  }
+
   function handleLogout() {
     authStorage.clear()
     navigate('/login', { replace: true })
   }
 
-  const occupiedSeats = new Map(mockPlayers.map((player) => [player.seat, player]))
-  const currentUserInitials = getPlayerInitials(currentUserName)
+  const seatsByOrder = new Map(tableInfo?.seats.map((seat) => [seat.order, seat]) ?? [])
+  const currentUserSeat = tableInfo?.seats.find((seat) => seat.user?.username === currentUserName)
 
   return (
     <main className="table-page min-h-screen bg-[#111311] px-4 py-5 text-[#f7f6f2] sm:px-8 sm:py-7">
@@ -111,43 +174,49 @@ export function TablePage() {
             <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#8e968a]">10 seats · choose your spot</p>
             <h2 id="seat-selection-title" className="mt-2 font-['Space_Grotesk'] text-3xl font-bold tracking-tight sm:text-4xl">Find your seat</h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#a5aaa1]" role="status">
-              {selectedSeat ? `Seat ${selectedSeat} is yours. You can move to any other open seat.` : 'Choose an open seat to join the table.'}
+              {currentUserSeat ? `Seat ${currentUserSeat.order} is yours. You can move to any other open seat.` : 'Choose an open seat to join the table.'}
             </p>
           </div>
 
-          <div className="poker-table-stage mt-8 sm:mt-12">
-            <div className="poker-table-surface" aria-label={`${tableName}, poker table with ten seats`}>
-              <div className="table-felt-marking" aria-hidden="true"><span>CHIPSPOCKET</span><small>♠ · ♣ · ♥ · ♦</small></div>
-              <div className="table-center-label" aria-hidden="true"><span>TABLE OPEN</span><strong>♠</strong></div>
+          {isTableLoading && !tableLoadError && <p className="mt-12 text-center text-sm text-[#a5aaa1]" role="status">Loading table seats...</p>}
+          {tableLoadError && <div className="mx-auto mt-8 max-w-md rounded-xl border border-[#e27350]/30 bg-[#e27350]/10 px-4 py-3 text-center text-sm text-[#ffad93]" role="alert"><p>{tableLoadError}</p><button className="mt-3 rounded-lg border border-[#ffad93]/40 px-3 py-2 text-sm text-[#ffad93] transition hover:border-[#ffad93] focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40" type="button" onClick={() => { void loadTableInfo() }}>Try again</button></div>}
+          {!isTableLoading && !tableLoadError && tableInfo && <>
+            <div className="poker-table-stage mt-8 sm:mt-12">
+              <div className="poker-table-surface" aria-label={`${tableName}, poker table with ${tableInfo.seats.length} seats`}>
+                <div className="table-felt-marking" aria-hidden="true"><span>CHIPSPOCKET</span><small>♠ · ♣ · ♥ · ♦</small></div>
+                <div className="table-center-label" aria-hidden="true"><span>TABLE OPEN</span><strong>♠</strong></div>
+              </div>
+
+              {seatPositions.map(({ seat, className }) => {
+                const seatInfo = seatsByOrder.get(seat)
+                const username = seatInfo?.user?.username
+                const isCurrentUser = username === currentUserName
+                const isClaiming = seatInfo?.id === claimingSeatId
+                const label = username ? `${username}, seat ${seat}` : `Choose seat ${seat}`
+                return (
+                  <button
+                    className={`table-seat ${className} ${username ? 'table-seat-occupied' : 'table-seat-open'} ${isCurrentUser ? 'table-seat-selected' : ''}`}
+                    key={seatInfo?.id ?? seat}
+                    type="button"
+                    onClick={() => { if (seatInfo && !seatInfo.user) void handleSeatClaim(seatInfo) }}
+                    disabled={!seatInfo || Boolean(username) || Boolean(claimingSeatId)}
+                    aria-label={isClaiming ? `Claiming seat ${seat}` : label}
+                    aria-pressed={isCurrentUser}
+                  >
+                    <span className="table-seat-inner">{isClaiming ? '…' : username ? getPlayerInitials(username) : '＋'}</span>
+                    <span className="table-seat-number">{seat}</span>
+                    {isCurrentUser && <span className="table-seat-you">You</span>}
+                  </button>
+                )
+              })}
             </div>
 
-            {seatPositions.map(({ seat, className }) => {
-              const player = occupiedSeats.get(seat)
-              const isSelected = selectedSeat === seat
-              const label = player ? `${player.name}, seat ${seat}` : isSelected ? `Your seat, seat ${seat}` : `Choose seat ${seat}`
-              return (
-                <button
-                  className={`table-seat ${className} ${player ? 'table-seat-occupied' : 'table-seat-open'} ${isSelected ? 'table-seat-selected' : ''}`}
-                  key={seat}
-                  type="button"
-                  onClick={() => { if (!player) setSelectedSeat(isSelected ? null : seat) }}
-                  disabled={Boolean(player)}
-                  aria-label={label}
-                  aria-pressed={isSelected}
-                >
-                  <span className="table-seat-inner">{player ? getPlayerInitials(player.name) : isSelected ? currentUserInitials : '＋'}</span>
-                  <span className="table-seat-number">{seat}</span>
-                  {isSelected && <span className="table-seat-you">You</span>}
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="mt-8 flex items-center justify-center gap-5 text-xs text-[#8e968a]" aria-label="Seat status legend">
-            <span className="flex items-center gap-2"><i className="legend-dot legend-dot-open" aria-hidden="true" />Open</span>
-            <span className="flex items-center gap-2"><i className="legend-dot legend-dot-taken" aria-hidden="true" />Occupied</span>
-            <span className="flex items-center gap-2"><i className="legend-dot legend-dot-yours" aria-hidden="true" />Your seat</span>
-          </div>
+            <div className="mt-8 flex items-center justify-center gap-5 text-xs text-[#8e968a]" aria-label="Seat status legend">
+              <span className="flex items-center gap-2"><i className="legend-dot legend-dot-open" aria-hidden="true" />Open</span>
+              <span className="flex items-center gap-2"><i className="legend-dot legend-dot-taken" aria-hidden="true" />Occupied</span>
+              <span className="flex items-center gap-2"><i className="legend-dot legend-dot-yours" aria-hidden="true" />Your seat</span>
+            </div>
+          </>}
         </section>
       </div>
 
@@ -189,6 +258,7 @@ export function TablePage() {
           </div>
         </section>
       </div>}
+      {seatActionError && <p className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-[#e27350]/30 bg-[#e27350]/10 px-4 py-3 text-center text-sm text-[#ffad93]" role="alert">{seatActionError}</p>}
       {shareError && <p className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-[#e27350]/30 bg-[#e27350]/10 px-4 py-3 text-center text-sm text-[#ffad93]" role="alert">{shareError}</p>}
     </main>
   )

@@ -1,18 +1,7 @@
-export interface MockPlayer {
-  seat: number
-  name: string
-}
-
 export interface SeatPosition {
   seat: number
   className: string
 }
-
-export const mockPlayers: MockPlayer[] = [
-  { seat: 2, name: 'Mohammad' },
-  { seat: 5, name: 'Sara' },
-  { seat: 8, name: 'Reza' },
-]
 
 export const seatPositions: SeatPosition[] = [
   { seat: 1, className: 'seat-position-1' },
