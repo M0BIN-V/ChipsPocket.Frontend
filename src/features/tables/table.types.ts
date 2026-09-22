@@ -27,6 +27,11 @@ export interface GetJoinTokenResponse {
   token: string
 }
 
+export interface LobbyUserResponse {
+  id: string
+  username: string
+}
+
 export interface JoinResponse {
   tableId: string
 }

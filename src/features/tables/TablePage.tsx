@@ -3,7 +3,8 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { getMe } from '../../api/auth'
 import { authStorage } from '../../api/authStorage'
-import { getTableJoinToken } from '../../api/tableLobby'
+import { getTableJoinToken, getTableLobbyUsers } from '../../api/tableLobby'
+import type { LobbyUserResponse } from './table.types'
 import { getPlayerInitials, mockPlayers, seatPositions } from './mockTableData'
 import { buildTableJoinUrl } from './tableShare'
 
@@ -23,6 +24,10 @@ export function TablePage() {
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [joinToken, setJoinToken] = useState<string | null>(tableState?.joinToken ?? null)
   const [shareError, setShareError] = useState<string | null>(null)
+  const [isLobbyOpen, setIsLobbyOpen] = useState(false)
+  const [lobbyUsers, setLobbyUsers] = useState<LobbyUserResponse[]>([])
+  const [isLobbyLoading, setIsLobbyLoading] = useState(false)
+  const [lobbyError, setLobbyError] = useState<string | null>(null)
   const tableId = routeTableId?.trim() || tableState?.tableId?.trim()
   const tableName = tableState?.tableName ?? 'Poker table'
   const joinUrl = joinToken ? buildTableJoinUrl(joinToken) : null
@@ -48,13 +53,34 @@ export function TablePage() {
   }, [])
 
   useEffect(() => {
-    if (!isShareOpen) return
+    if (!isShareOpen && !isLobbyOpen) return
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setIsShareOpen(false)
+      if (event.key !== 'Escape') return
+      setIsShareOpen(false)
+      setIsLobbyOpen(false)
     }
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
-  }, [isShareOpen])
+  }, [isShareOpen, isLobbyOpen])
+
+  function handleLobbyOpen() {
+    if (!tableId) {
+      setLobbyError('Lobby information is unavailable for this table.')
+      setIsLobbyOpen(true)
+      return
+    }
+
+    setIsLobbyOpen(true)
+    setIsLobbyLoading(true)
+    setLobbyError(null)
+    getTableLobbyUsers(tableId).then((users) => {
+      setLobbyUsers(users)
+    }).catch(() => {
+      setLobbyError('We could not load the lobby users. Please try again.')
+    }).finally(() => {
+      setIsLobbyLoading(false)
+    })
+  }
 
   function handleLogout() {
     authStorage.clear()
@@ -75,6 +101,7 @@ export function TablePage() {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <button className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-lg text-[#c3c8bd] transition hover:border-[#b7d334]/60 hover:text-[#f7f6f2] focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40 disabled:cursor-not-allowed disabled:opacity-40" type="button" onClick={() => { setShareError(null); setIsShareOpen(true) }} disabled={!joinUrl} aria-label="Share table" title="Share table">▦</button>
+            <button className="rounded-lg border border-white/10 px-3 py-2 text-sm text-[#c3c8bd] transition hover:border-[#b7d334]/60 hover:text-[#f7f6f2] focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40" type="button" onClick={handleLobbyOpen}>Lobby Users</button>
             <button className="rounded-lg px-1 py-2 text-sm text-[#8e968a] transition hover:text-[#f7f6f2] focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40" type="button" onClick={handleLogout}>Log out</button>
           </div>
         </header>
@@ -138,6 +165,28 @@ export function TablePage() {
             <QRCodeSVG value={joinUrl} size={220} level="M" includeMargin bgColor="#ffffff" fgColor="#111311" aria-label="QR code to join this table" />
           </div>
           <p className="mt-5 rounded-lg bg-[#111311] px-3 py-2 text-xs text-[#8e968a]">Join code: <strong className="text-[#d9ed7a]">{joinToken}</strong></p>
+        </section>
+      </div>}
+      {isLobbyOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#080a08]/80 px-4 py-6 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsLobbyOpen(false) }}>
+        <section className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#1a1d19] p-5 text-[#f7f6f2] shadow-2xl shadow-black/40 sm:p-7" role="dialog" aria-modal="true" aria-labelledby="lobby-users-title">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#b7d334]">Current players</p>
+              <h2 id="lobby-users-title" className="mt-1 font-['Space_Grotesk'] text-2xl font-bold">Lobby Users</h2>
+            </div>
+            <button className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 text-xl text-[#c3c8bd] transition hover:border-white/25 focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40" type="button" onClick={() => setIsLobbyOpen(false)} aria-label="Close lobby users dialog">×</button>
+          </div>
+          <div className="mt-6" aria-live="polite">
+            {isLobbyLoading && <p className="py-5 text-center text-sm text-[#a5aaa1]">Loading lobby users...</p>}
+            {!isLobbyLoading && lobbyError && <div className="rounded-xl border border-[#e27350]/30 bg-[#e27350]/10 px-4 py-3 text-sm text-[#ffad93]" role="alert">{lobbyError}</div>}
+            {!isLobbyLoading && !lobbyError && lobbyUsers.length === 0 && <p className="py-5 text-center text-sm text-[#a5aaa1]">No users are currently in the lobby.</p>}
+            {!isLobbyLoading && !lobbyError && lobbyUsers.length > 0 && <ul className="space-y-2">
+              {lobbyUsers.map((user) => <li className="flex items-center gap-3 rounded-xl bg-[#111311] px-3 py-3" key={user.id}>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#b7d334]/15 text-sm font-semibold text-[#d9ed7a]" aria-hidden="true">{getPlayerInitials(user.username)}</span>
+                <span className="text-sm font-medium">{user.username}</span>
+              </li>)}
+            </ul>}
+          </div>
         </section>
       </div>}
       {shareError && <p className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-[#e27350]/30 bg-[#e27350]/10 px-4 py-3 text-center text-sm text-[#ffad93]" role="alert">{shareError}</p>}
