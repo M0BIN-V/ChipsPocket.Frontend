@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { getMe } from '../../api/auth'
 import { authStorage } from '../../api/authStorage'
 import type { MeResponse } from '../auth/auth.types'
+import { QrScanner } from './QrScanner'
+import { getTableIdFromJoinUrl } from './tableShare'
 
 export function HomePage() {
   const navigate = useNavigate()
   const [user, setUser] = useState<MeResponse | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [showComingSoon, setShowComingSoon] = useState(false)
+  const [showQrScanner, setShowQrScanner] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -22,6 +24,14 @@ export function HomePage() {
   }, [navigate])
 
   function handleLogout() { authStorage.clear(); navigate('/login', { replace: true }) }
+
+  const handleQrScan = useCallback((value: string): boolean => {
+    const tableId = getTableIdFromJoinUrl(value)
+    if (!tableId) return false
+    setShowQrScanner(false)
+    navigate(`/table/${encodeURIComponent(tableId)}`)
+    return true
+  }, [navigate])
 
   return (
     <main className="min-h-screen bg-[#111311] px-5 py-6 text-[#f7f6f2] sm:px-8">
@@ -37,12 +47,12 @@ export function HomePage() {
           {errorMessage && <p className="mt-4 text-sm text-[#ffad93]" role="alert">{errorMessage}</p>}
           <div className="mt-10 space-y-3">
             <button className="group flex min-h-24 w-full items-center justify-between rounded-2xl bg-[#b7d334] px-5 py-5 text-left text-[#151712] shadow-xl shadow-[#b7d334]/10 transition hover:bg-[#c9e34e] focus:outline-none focus:ring-2 focus:ring-[#d9ed7a] focus:ring-offset-2 focus:ring-offset-[#111311]" type="button" onClick={() => navigate('/create-table')}><span><span className="block font-['Space_Grotesk'] text-xl font-bold">Create Table</span><span className="mt-1 block text-sm text-[#3c461c]">Name your table and get started</span></span><span className="text-2xl transition-transform group-hover:translate-x-1" aria-hidden="true">→</span></button>
-            <button className="flex min-h-20 w-full items-center justify-between rounded-2xl border border-white/10 bg-[#1a1d19] px-5 py-4 text-left transition hover:border-white/25 focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40" type="button" onClick={() => setShowComingSoon(true)}><span><span className="block font-['Space_Grotesk'] text-lg font-semibold">Join Table</span><span className="mt-1 block text-sm text-[#8e968a]">Enter an invite code</span></span><span className="rounded-full border border-white/10 px-3 py-1 text-xs text-[#8e968a]">Soon</span></button>
+            <button className="flex min-h-20 w-full items-center justify-between rounded-2xl border border-white/10 bg-[#1a1d19] px-5 py-4 text-left transition hover:border-white/25 focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40" type="button" onClick={() => setShowQrScanner(true)}><span><span className="block font-['Space_Grotesk'] text-lg font-semibold">Join Table</span><span className="mt-1 block text-sm text-[#8e968a]">Scan a table QR code</span></span><span className="text-xl text-[#b7d334]" aria-hidden="true">▦</span></button>
           </div>
-          {showComingSoon && <p className="mt-4 text-center text-sm text-[#d9ed7a]" role="status">Joining tables is coming soon.</p>}
         </section>
         <p className="pb-2 text-center text-xs uppercase tracking-[0.18em] text-[#596157]">{user ? 'Your poker night, organized' : 'ChipsPocket'}</p>
       </div>
+      {showQrScanner && <QrScanner onScan={handleQrScan} onClose={() => setShowQrScanner(false)} />}
     </main>
   )
 }
