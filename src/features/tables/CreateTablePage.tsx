@@ -1,3 +1,4 @@
+import { AlertTriangle, ArrowLeft, CheckCircle2, Plus, Table2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
@@ -49,14 +50,44 @@ export function CreateTablePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#111311] px-5 py-6 text-[#f7f6f2] sm:px-8">
-      <div className="mx-auto w-full max-w-lg">
-        <header className="flex items-center gap-3"><button className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-xl text-[#c3c8bd] transition hover:border-white/25 focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40" type="button" onClick={() => navigate('/authenticated')} aria-label="Back to home">←</button><div><p className="text-xs font-medium uppercase tracking-[0.18em] text-[#b7d334]">New table</p><h1 className="font-['Space_Grotesk'] text-2xl font-bold">Create Table</h1></div></header>
-        <form className="mt-9 space-y-8 pb-8" onSubmit={handleSubmit} noValidate>
-          <section><h2 className="font-['Space_Grotesk'] text-lg font-semibold">Table information</h2><div className="mt-4 rounded-2xl border border-white/10 bg-[#1a1d19] p-4"><label className="block text-sm font-medium text-[#d8dbd3]" htmlFor="table-name">Table name</label><input className={`mt-2 h-12 w-full rounded-xl border bg-[#111311] px-4 text-base outline-none transition placeholder:text-[#6f756c] focus:ring-2 focus:ring-[#b7d334]/20 ${nameError ? 'border-[#e27350]' : 'border-white/10 focus:border-[#b7d334]'}`} id="table-name" name="tableName" maxLength={255} placeholder="Friday Night Poker" value={tableName} onChange={(event) => { setTableName(event.target.value); setNameError(null); setErrorMessage(null); setSuccessMessage(null) }} disabled={isSubmitting} />{nameError && <p className="mt-2 text-sm text-[#ffad93]" role="alert">{nameError}</p>}</div></section>
-          {errorMessage && <p className="rounded-xl border border-[#e27350]/30 bg-[#e27350]/10 px-4 py-3 text-sm text-[#ffad93]" role="alert">{errorMessage}</p>}
-          {successMessage && <p className="rounded-xl border border-[#b7d334]/30 bg-[#b7d334]/10 px-4 py-3 text-sm text-[#d9ed7a]" role="status">{successMessage}</p>}
-          <button className="w-full rounded-xl bg-[#b7d334] px-4 py-3.5 font-semibold text-[#151712] transition hover:bg-[#c9e34e] focus:outline-none focus:ring-2 focus:ring-[#d9ed7a] focus:ring-offset-2 focus:ring-offset-[#111311] disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={isSubmitting}>{isSubmitting ? 'Creating Table...' : 'Create Table'}</button>
+    <main className="app-shell">
+      <div className="mobile-shell">
+        <header className="page-header">
+          <button className="icon-button" type="button" onClick={() => navigate('/authenticated')} aria-label="Back to home"><ArrowLeft size={18} strokeWidth={2.2} /></button>
+          <div className="page-titlegroup">
+            <span className="eyebrow">New table</span>
+            <h1>Create Table</h1>
+          </div>
+        </header>
+
+        <form className="form-card" onSubmit={handleSubmit} noValidate>
+          <div className="mb-5">
+            <h2 className="font-['Space_Grotesk'] text-xl font-bold tracking-[-0.04em] text-white">Table information</h2>
+            <p className="mt-1 text-sm text-[#a5aaa1]">Give your group a memorable table name.</p>
+          </div>
+
+          <div className="form-field">
+            <label htmlFor="table-name">Table name</label>
+            <div className="input-with-icon">
+              <Table2 size={18} strokeWidth={2.1} />
+              <input
+                className="form-input"
+                id="table-name"
+                name="tableName"
+                maxLength={255}
+                placeholder="Friday Night Poker"
+                value={tableName}
+                onChange={(event) => { setTableName(event.target.value); setNameError(null); setErrorMessage(null); setSuccessMessage(null) }}
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+
+          {nameError && <div className="form-error mt-3" role="alert"><span aria-hidden="true"><AlertTriangle size={16} strokeWidth={2.3} /></span><span>{nameError}</span></div>}
+          {errorMessage && <div className="form-error mt-3" role="alert"><span aria-hidden="true"><AlertTriangle size={16} strokeWidth={2.3} /></span><span>{errorMessage}</span></div>}
+          {successMessage && <div className="form-success mt-3" role="status"><span aria-hidden="true"><CheckCircle2 size={16} strokeWidth={2.4} /></span><span>{successMessage}</span></div>}
+
+          <button className="primary-button mt-5" type="submit" disabled={isSubmitting}><Plus size={18} strokeWidth={2.3} /><span>{isSubmitting ? 'Creating table...' : 'Create Table'}</span></button>
         </form>
       </div>
     </main>

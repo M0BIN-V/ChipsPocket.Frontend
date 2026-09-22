@@ -5,11 +5,11 @@ export interface ChipAppearanceService {
 }
 
 const mockChipAppearances: ChipAppearance[] = [
-  { id: 'blue', name: 'Blue', picture: '●', color: '#6ea8fe' },
-  { id: 'red', name: 'Red', picture: '●', color: '#ee765d' },
-  { id: 'black', name: 'Black', picture: '●', color: '#aeb7ad' },
-  { id: 'green', name: 'Green', picture: '●', color: '#7fc58a' },
-  { id: 'white', name: 'White', picture: '●', color: '#f4f0e4' },
+  { id: 'blue', name: 'Blue', picture: 'circle', color: '#6ea8fe' },
+  { id: 'red', name: 'Red', picture: 'circle', color: '#ee765d' },
+  { id: 'black', name: 'Black', picture: 'circle', color: '#aeb7ad' },
+  { id: 'green', name: 'Green', picture: 'circle', color: '#7fc58a' },
+  { id: 'white', name: 'White', picture: 'circle', color: '#f4f0e4' },
 ]
 
 export class MockChipAppearanceService implements ChipAppearanceService {

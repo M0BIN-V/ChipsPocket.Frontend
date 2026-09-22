@@ -1,3 +1,4 @@
+import { AlertTriangle, ChevronRight, Club, LogOut, Plus, QrCode, UserRound, Users, X } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import axios from 'axios'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -83,32 +84,98 @@ export function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#111311] px-5 py-6 text-[#f7f6f2] sm:px-8">
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-lg flex-col">
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3" aria-label="ChipsPocket"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#b7d334] text-xl font-bold text-[#151712]">♠</span><span className="font-['Space_Grotesk'] text-lg font-semibold tracking-tight">ChipsPocket</span></div>
-          <button className="rounded-lg px-2 py-2 text-sm text-[#8e968a] transition hover:text-[#f7f6f2] focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40" type="button" onClick={handleLogout}>Log out</button>
+    <main className="app-shell">
+      <div className="mobile-shell">
+        <header className="page-header">
+          <div className="flex items-center gap-3" aria-label="ChipsPocket">
+            <span className="brand-mark" aria-hidden="true"><Club size={20} strokeWidth={2.2} /></span>
+            <span className="brand-title">ChipsPocket</span>
+          </div>
+          <button className="ghost-button" type="button" onClick={handleLogout}><LogOut size={16} strokeWidth={2.2} />Log out</button>
         </header>
-        <section className="flex flex-1 flex-col justify-center py-12">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#b7d334]">Ready when you are</p>
-          <h1 className="mt-3 font-['Space_Grotesk'] text-4xl font-bold tracking-tight sm:text-5xl">Set up your table.</h1>
-          <p className="mt-4 max-w-md text-base leading-7 text-[#a5aaa1]">{user ? `Welcome back, ${user.username}.` : 'Loading your account...'} Bring the chips, we’ll handle the details.</p>
-          {errorMessage && <p className="mt-4 text-sm text-[#ffad93]" role="alert">{errorMessage}</p>}
-          <div className="mt-10 space-y-3">
-            <button className="group flex min-h-24 w-full items-center justify-between rounded-2xl bg-[#b7d334] px-5 py-5 text-left text-[#151712] shadow-xl shadow-[#b7d334]/10 transition hover:bg-[#c9e34e] focus:outline-none focus:ring-2 focus:ring-[#d9ed7a] focus:ring-offset-2 focus:ring-offset-[#111311]" type="button" onClick={() => navigate('/create-table')}><span><span className="block font-['Space_Grotesk'] text-xl font-bold">Create Table</span><span className="mt-1 block text-sm text-[#3c461c]">Name your table and get started</span></span><span className="text-2xl transition-transform group-hover:translate-x-1" aria-hidden="true">→</span></button>
-            <button className="flex min-h-20 w-full items-center justify-between rounded-2xl border border-white/10 bg-[#1a1d19] px-5 py-4 text-left transition hover:border-white/25 focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40" type="button" onClick={openJoinDialog}><span><span className="block font-['Space_Grotesk'] text-lg font-semibold">Join Table</span><span className="mt-1 block text-sm text-[#8e968a]">Scan a QR code or enter a join code</span></span><span className="text-xl text-[#b7d334]" aria-hidden="true">▦</span></button>
+
+        <section className="home-card" aria-label="Main home screen">
+          <div className="welcome-row">
+            <div>
+              <span className="eyebrow">Ready when you are</span>
+              <h1 className="mt-3 font-['Space_Grotesk'] text-4xl font-bold tracking-[-0.06em] text-white">Set up your table.</h1>
+            </div>
+            <div className="user-chip" aria-label="Current user initial"><UserRound size={18} strokeWidth={2.2} /></div>
+          </div>
+
+          <p className="mt-4 text-base leading-7 text-[#a5aaa1]">{user ? `Welcome back, ${user.username}.` : 'Loading your account...'} Bring the chips—we’ll handle the details.</p>
+
+          {errorMessage && <div className="form-error mt-4" role="alert"><span aria-hidden="true"><AlertTriangle size={16} strokeWidth={2.3} /></span><span>{errorMessage}</span></div>}
+
+          <div className="summary-grid" aria-label="Quick app stats">
+            <div className="summary-stat">
+              <span>Table</span>
+              <strong>1-2 min</strong>
+            </div>
+            <div className="summary-stat">
+              <span>Seats</span>
+              <strong>10 max</strong>
+            </div>
+            <div className="summary-stat">
+              <span>Share</span>
+              <strong>QR code</strong>
+            </div>
+          </div>
+
+          <div className="action-stack mt-6">
+            <button className="action-card primary" type="button" onClick={() => navigate('/create-table')}>
+              <span className="action-card-icon" aria-hidden="true"><Plus size={22} strokeWidth={2.4} /></span>
+              <span className="action-copy">
+                <strong>Create Table</strong>
+                <span>Name your table and get started</span>
+              </span>
+              <span className="action-arrow" aria-hidden="true"><ChevronRight size={18} strokeWidth={2.4} /></span>
+            </button>
+
+            <button className="action-card" type="button" onClick={openJoinDialog}>
+              <span className="action-card-icon" aria-hidden="true"><Users size={20} strokeWidth={2.3} /></span>
+              <span className="action-copy">
+                <strong>Join Table</strong>
+                <span>Scan a QR code or use a join code</span>
+              </span>
+              <span className="action-arrow" aria-hidden="true"><ChevronRight size={18} strokeWidth={2.4} /></span>
+            </button>
           </div>
         </section>
-        <p className="pb-2 text-center text-xs uppercase tracking-[0.18em] text-[#596157]">{user ? 'Your poker night, organized' : 'ChipsPocket'}</p>
       </div>
-      {showJoinDialog && <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#080a08]/80 px-4 py-6 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeJoinDialog() }}>
-        <section className="w-full max-w-md rounded-3xl border border-white/10 bg-[#1a1d19] p-5 shadow-2xl shadow-black/40 sm:p-7" role="dialog" aria-modal="true" aria-labelledby="join-table-title">
-          <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-medium uppercase tracking-[0.18em] text-[#b7d334]">Join a table</p><h2 id="join-table-title" className="mt-1 font-['Space_Grotesk'] text-2xl font-bold">Join Table</h2></div><button className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 text-xl text-[#c3c8bd] transition hover:border-white/25 focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40" type="button" onClick={closeJoinDialog} aria-label="Close join table dialog">×</button></div>
-          <button className="mt-6 flex w-full items-center justify-between rounded-xl bg-[#b7d334] px-4 py-3.5 text-left font-semibold text-[#151712] transition hover:bg-[#c9e34e] focus:outline-none focus:ring-2 focus:ring-[#d9ed7a] disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => { setJoinError(null); setShowQrScanner(true) }} disabled={isJoining}><span>Scan QR Code</span><span aria-hidden="true">▦</span></button>
-          <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-[#596157]"><span className="h-px flex-1 bg-white/10" />or<span className="h-px flex-1 bg-white/10" /></div>
-          <form onSubmit={handleManualJoin}><label className="block text-sm font-medium text-[#d8dbd3]" htmlFor="join-code">Enter join code</label><input className="mt-2 h-12 w-full rounded-xl border border-white/10 bg-[#111311] px-4 text-base tracking-[0.12em] text-[#f7f6f2] outline-none transition placeholder:text-[#6f756c] focus:border-[#b7d334] focus:ring-2 focus:ring-[#b7d334]/20" id="join-code" value={joinCode} onChange={(event) => { setJoinCode(event.target.value); setJoinError(null) }} placeholder="A7K92X" inputMode="text" pattern="[A-Za-z0-9]+" disabled={isJoining} autoComplete="off" />{joinError && <p className="mt-2 text-sm text-[#ffad93]" role="alert">{joinError}</p>}<button className="mt-4 w-full rounded-xl border border-white/10 px-4 py-3 font-semibold text-[#d8dbd3] transition hover:border-white/25 focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={isJoining}>{isJoining ? 'Joining...' : 'Join'}</button></form>
-        </section>
-      </div>}
+
+      {showJoinDialog && (
+        <div className="sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeJoinDialog() }}>
+          <section className="sheet-card" role="dialog" aria-modal="true" aria-labelledby="join-table-title">
+            <div className="sheet-header">
+              <div>
+                <span className="eyebrow">Join a table</span>
+                <h2 id="join-table-title">Join Table</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={closeJoinDialog} aria-label="Close join table dialog"><X size={18} strokeWidth={2.2} /></button>
+            </div>
+
+            <button className="primary-button mt-6" type="button" onClick={() => { setJoinError(null); setShowQrScanner(true) }} disabled={isJoining}>
+              <QrCode size={18} strokeWidth={2.2} />
+              <span>Scan QR code</span>
+            </button>
+
+            <div className="form-divider">or</div>
+
+            <form onSubmit={handleManualJoin}>
+              <div className="form-field">
+                <label htmlFor="join-code">Enter join code</label>
+                <input className="form-input tracking-[0.12em]" id="join-code" value={joinCode} onChange={(event) => { setJoinCode(event.target.value); setJoinError(null) }} placeholder="A7K92X" inputMode="text" pattern="[A-Za-z0-9]+" disabled={isJoining} autoComplete="off" />
+              </div>
+
+              {joinError && <div className="form-error mt-3" role="alert"><span aria-hidden="true"><AlertTriangle size={16} strokeWidth={2.3} /></span><span>{joinError}</span></div>}
+
+              <button className="secondary-button mt-4" type="submit" disabled={isJoining}>{isJoining ? 'Joining...' : 'Join'}</button>
+            </form>
+          </section>
+        </div>
+      )}
+
       {showQrScanner && <QrScanner onScan={handleQrScan} onClose={() => setShowQrScanner(false)} />}
     </main>
   )
