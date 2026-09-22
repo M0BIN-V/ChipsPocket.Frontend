@@ -3,10 +3,12 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { getMe } from '../../api/auth'
 import { authStorage } from '../../api/authStorage'
+import { getTableJoinToken } from '../../api/tableLobby'
 import { getPlayerInitials, mockPlayers, seatPositions } from './mockTableData'
 import { buildTableJoinUrl } from './tableShare'
 
 interface TableLocationState {
+  joinToken?: string
   tableId?: string
   tableName?: string
 }
@@ -15,13 +17,27 @@ export function TablePage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { tableId: routeTableId } = useParams<{ tableId: string }>()
+  const tableState = location.state as TableLocationState | null
   const [currentUserName, setCurrentUserName] = useState('You')
   const [selectedSeat, setSelectedSeat] = useState<number | null>(null)
   const [isShareOpen, setIsShareOpen] = useState(false)
-  const tableState = location.state as TableLocationState | null
+  const [joinToken, setJoinToken] = useState<string | null>(tableState?.joinToken ?? null)
+  const [shareError, setShareError] = useState<string | null>(null)
   const tableId = routeTableId?.trim() || tableState?.tableId?.trim()
   const tableName = tableState?.tableName ?? 'Poker table'
-  const joinUrl = tableId ? buildTableJoinUrl(tableId) : null
+  const joinUrl = joinToken ? buildTableJoinUrl(joinToken) : null
+
+  useEffect(() => {
+    if (tableState?.joinToken) return
+    if (!tableId) return
+    let isMounted = true
+    getTableJoinToken(tableId).then((token) => {
+      if (isMounted) setJoinToken(token)
+    }).catch(() => {
+      if (isMounted) setShareError('Join information is unavailable. Only the table owner can generate a join code.')
+    })
+    return () => { isMounted = false }
+  }, [tableId, tableState?.joinToken])
 
   useEffect(() => {
     let isMounted = true
@@ -58,7 +74,7 @@ export function TablePage() {
             <h1 className="truncate font-['Space_Grotesk'] text-xl font-bold sm:text-2xl">{tableName}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <button className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-lg text-[#c3c8bd] transition hover:border-[#b7d334]/60 hover:text-[#f7f6f2] focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40 disabled:cursor-not-allowed disabled:opacity-40" type="button" onClick={() => setIsShareOpen(true)} disabled={!joinUrl} aria-label="Share table" title="Share table">▦</button>
+            <button className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-lg text-[#c3c8bd] transition hover:border-[#b7d334]/60 hover:text-[#f7f6f2] focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40 disabled:cursor-not-allowed disabled:opacity-40" type="button" onClick={() => { setShareError(null); setIsShareOpen(true) }} disabled={!joinUrl} aria-label="Share table" title="Share table">▦</button>
             <button className="rounded-lg px-1 py-2 text-sm text-[#8e968a] transition hover:text-[#f7f6f2] focus:outline-none focus:ring-2 focus:ring-[#b7d334]/40" type="button" onClick={handleLogout}>Log out</button>
           </div>
         </header>
@@ -121,9 +137,10 @@ export function TablePage() {
           <div className="mx-auto mt-6 w-fit rounded-2xl bg-white p-3 shadow-lg shadow-black/20 sm:p-4">
             <QRCodeSVG value={joinUrl} size={220} level="M" includeMargin bgColor="#ffffff" fgColor="#111311" aria-label="QR code to join this table" />
           </div>
-          <p className="mt-5 truncate rounded-lg bg-[#111311] px-3 py-2 text-xs text-[#8e968a]" title={joinUrl}>{joinUrl}</p>
+          <p className="mt-5 rounded-lg bg-[#111311] px-3 py-2 text-xs text-[#8e968a]">Join code: <strong className="text-[#d9ed7a]">{joinToken}</strong></p>
         </section>
       </div>}
+      {shareError && <p className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-[#e27350]/30 bg-[#e27350]/10 px-4 py-3 text-center text-sm text-[#ffad93]" role="alert">{shareError}</p>}
     </main>
   )
 }

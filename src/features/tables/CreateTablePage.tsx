@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { createTable } from '../../api/tables'
+import { getTableJoinToken } from '../../api/tableLobby'
 
 function getCreateTableError(error: unknown): string {
   if (axios.isAxiosError(error)) {
@@ -38,7 +39,8 @@ export function CreateTablePage() {
     setIsSubmitting(true)
     try {
       const createdTable = await createTable({ tableName: trimmedName })
-      navigate(`/table/${createdTable.id}`, { state: { tableName: trimmedName, tableId: createdTable.id } })
+      const joinToken = await getTableJoinToken(createdTable.id)
+      navigate(`/table/${createdTable.id}`, { state: { tableName: trimmedName, tableId: createdTable.id, joinToken } })
     } catch (error: unknown) {
       setErrorMessage(getCreateTableError(error))
     } finally {

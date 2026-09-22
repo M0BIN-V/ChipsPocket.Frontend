@@ -15,6 +15,8 @@
         "tags": [
           "Authentication"
         ],
+        "summary": "Register a new user",
+        "description": "Creates a new user account using a username and password.\r\n\r\nThe username must not already be in use. If the provided credentials\r\ndo not satisfy the configured identity requirements, the validation\r\nerrors are returned to the client.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -57,6 +59,8 @@
         "tags": [
           "Authentication"
         ],
+        "summary": "Log in",
+        "description": "Authenticates a user using their username and password.\r\n\r\nIf the credentials are valid, a JWT access token is returned.\r\nThe same unauthorized response is returned when the username does not exist\r\nor the password is incorrect.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -86,6 +90,8 @@
         "tags": [
           "Authentication"
         ],
+        "summary": "Get current user",
+        "description": "Returns the profile information of the currently authenticated user.\r\n\r\nThe user is identified using the NameIdentifier claim from the\r\nauthenticated user's access token.",
         "responses": {
           "200": {
             "description": "OK",
@@ -105,6 +111,8 @@
         "tags": [
           "Tables"
         ],
+        "summary": "Create a poker table",
+        "description": "Creates a new poker table for the authenticated user.\r\n\r\nThe authenticated user becomes the owner of the table and is\r\nautomatically added to the table's lobby.\r\n\r\nA user cannot create multiple tables with the same name.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -135,6 +143,117 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/tables/{tableId}": {
+      "get": {
+        "tags": [
+          "Tables"
+        ],
+        "summary": "Get table information",
+        "description": "Returns the details of a poker table, including its name and seats.\r\n\r\nThe authenticated user must be a member of the table's lobby.\r\nUsers who are not members of the lobby are forbidden from accessing\r\nthe table information.",
+        "parameters": [
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewTableInfoDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tables/lobby/{tableId}/join-token": {
+      "get": {
+        "tags": [
+          "Tables"
+        ],
+        "summary": "Get table join token",
+        "description": "Generates a short-lived token that can be shared with other users\r\nto join the table's lobby.\r\n\r\nOnly the table owner can generate a join token.",
+        "parameters": [
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetJoinTokenResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tables/lobby/join/{token}": {
+      "post": {
+        "tags": [
+          "Tables"
+        ],
+        "summary": "Join a table lobby",
+        "description": "Adds the authenticated user to a table's lobby using a join token.\r\n\r\nIf the user is already a member of the lobby, no duplicate membership\r\nis created.\r\n\r\nThe join token must be valid and correspond to an existing table.\r\n\r\nOnly 10 users can be joined",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           },
           "404": {
             "description": "Not Found",
@@ -191,6 +310,17 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "GetJoinTokenResponse": {
+        "required": [
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
           }
         }
       },
@@ -289,6 +419,72 @@
             "type": "string"
           },
           "password": {
+            "type": "string"
+          }
+        }
+      },
+      "ViewSeatDto": {
+        "required": [
+          "id",
+          "order",
+          "user"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "order": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "user": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ViewUserDto"
+              }
+            ]
+          }
+        }
+      },
+      "ViewTableInfoDto": {
+        "required": [
+          "id",
+          "name",
+          "seats"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "seats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ViewSeatDto"
+            }
+          }
+        }
+      },
+      "ViewUserDto": {
+        "required": [
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
             "type": "string"
           }
         }

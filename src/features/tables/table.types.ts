@@ -22,3 +22,7 @@ export interface CreateTableRequest {
 export interface CreateTableResponse {
   id: string
 }
+
+export interface GetJoinTokenResponse {
+  token: string
+}

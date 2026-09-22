@@ -1,13 +1,13 @@
-export function buildTableJoinUrl(tableId: string): string {
-  return new URL(`/tables/${encodeURIComponent(tableId)}/join`, window.location.origin).toString()
+export function buildTableJoinUrl(token: string): string {
+  return new URL(`/join/${encodeURIComponent(token)}`, window.location.origin).toString()
 }
 
-export function getTableIdFromJoinUrl(value: string): string | null {
+export function getJoinTokenFromUrl(value: string): string | null {
   try {
     const url = new URL(value)
     if (url.origin !== window.location.origin) return null
 
-    const match = url.pathname.match(/^\/tables\/([^/]+)\/join\/?$/)
+    const match = url.pathname.match(/^\/join\/([^/]+)\/?$/)
     return match ? decodeURIComponent(match[1]) : null
   } catch {
     return null
