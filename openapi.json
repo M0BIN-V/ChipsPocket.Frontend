@@ -198,7 +198,7 @@
           "Tables"
         ],
         "summary": "Get table join token",
-        "description": "Generates a short-lived token that can be shared with other users\r\nto join the table's lobby.\r\n\r\nOnly the table owner can generate a join token.",
+        "description": "Generates a short-lived token that can be shared with other users\r\nto join the table's lobby.",
         "parameters": [
           {
             "name": "tableId",
@@ -253,7 +253,14 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinResponse"
+                }
+              }
+            }
           },
           "404": {
             "description": "Not Found",
@@ -267,6 +274,41 @@
           },
           "409": {
             "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/tables/lobby/{tableId}": {
+      "get": {
+        "tags": [
+          "Tables"
+        ],
+        "summary": "Get lobby users",
+        "description": "Returns the users currently in the lobby of the specified table.\r\n\r\nOnly users who are members of the table's lobby can access\r\nthe list of lobby users.",
+        "parameters": [
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LobbyUserDto"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -368,6 +410,33 @@
                 "type": "string"
               }
             }
+          }
+        }
+      },
+      "JoinResponse": {
+        "required": [
+          "tableId"
+        ],
+        "type": "object",
+        "properties": {
+          "tableId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "LobbyUserDto": {
+        "required": [
+          "id",
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
           }
         }
       },

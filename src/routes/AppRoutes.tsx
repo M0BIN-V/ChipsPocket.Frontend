@@ -7,7 +7,6 @@ import { RegisterPage } from '../features/auth/RegisterPage'
 import { HomePage } from '../features/tables/HomePage'
 import { CreateTablePage } from '../features/tables/CreateTablePage'
 import { TablePage } from '../features/tables/TablePage'
-import { JoinedLobbyPage } from '../features/tables/JoinedLobbyPage'
 
 function AuthenticatedRoute() {
     return authStorage.getAccessToken() ? <HomePage /> : <Navigate to="/login" replace />
@@ -26,7 +25,7 @@ function JoinRoute() {
 }
 
 function JoinedLobbyRoute() {
-        return authStorage.getAccessToken() ? <JoinedLobbyPage /> : <Navigate to="/login" replace />
+    return authStorage.getAccessToken() ? <TablePage /> : <Navigate to="/login" replace />
 }
 
 function GuestRoute({ children }: { children: ReactElement }) {

@@ -3,7 +3,7 @@ import axios from 'axios'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getMe } from '../../api/auth'
 import { authStorage } from '../../api/authStorage'
-import { joinTableWithToken } from '../../api/tableLobby'
+import { getTableInfo, joinTableWithToken } from '../../api/tableLobby'
 import type { MeResponse } from '../auth/auth.types'
 import { QrScanner } from './QrScanner'
 import { getJoinTokenFromUrl } from './tableShare'
@@ -44,10 +44,11 @@ export function HomePage() {
     setJoinError(null)
     setIsJoining(true)
     try {
-      await joinTableWithToken(normalizedToken)
+      const tableId = await joinTableWithToken(normalizedToken)
+      const table = await getTableInfo(tableId)
       setShowQrScanner(false)
       setShowJoinDialog(false)
-      navigate('/table/lobby')
+      navigate(`/table/${encodeURIComponent(table.id)}`, { state: { tableId: table.id, tableName: table.name } })
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 404) setJoinError('This join code is invalid or has expired.')

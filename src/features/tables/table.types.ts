@@ -26,3 +26,19 @@ export interface CreateTableResponse {
 export interface GetJoinTokenResponse {
   token: string
 }
+
+export interface JoinResponse {
+  tableId: string
+}
+
+export interface TableSeatInfo {
+  id: string
+  order: number
+  user: { username: string } | null
+}
+
+export interface TableInfoResponse {
+  id: string
+  name: string
+  seats: TableSeatInfo[]
+}
