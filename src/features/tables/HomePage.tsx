@@ -91,7 +91,7 @@ export function HomePage() {
             <span className="brand-mark" aria-hidden="true"><Club size={20} strokeWidth={2.2} /></span>
             <span className="brand-title">ChipsPocket</span>
           </div>
-          <button className="ghost-button" type="button" onClick={handleLogout}><LogOut size={16} strokeWidth={2.2} />Log out</button>
+          <button className="ghost-button logout-button" type="button" onClick={handleLogout}><LogOut size={16} strokeWidth={2.2} />Log out</button>
         </header>
 
         <section className="home-card" aria-label="Main home screen">

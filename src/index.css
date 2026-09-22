@@ -381,6 +381,23 @@ img, video, svg { display: block; max-width: 100%; }
   font-weight: 600;
 }
 
+.logout-button {
+  border-color: rgba(239, 108, 108, 0.3);
+  background: rgba(111, 28, 34, 0.26);
+  color: #ffaaa8;
+}
+
+.logout-button:hover {
+  border-color: rgba(255, 124, 124, 0.62);
+  background: rgba(151, 38, 47, 0.48);
+  color: #ffe0de;
+  box-shadow: 0 8px 18px rgba(120, 24, 31, 0.22);
+}
+
+.logout-button:focus-visible {
+  outline-color: rgba(255, 124, 124, 0.45);
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;
