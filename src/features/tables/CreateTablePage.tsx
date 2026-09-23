@@ -41,7 +41,7 @@ export function CreateTablePage() {
     try {
       const createdTable = await createTable({ tableName: trimmedName })
       const joinToken = await getTableJoinToken(createdTable.id)
-      navigate(`/table/${createdTable.id}`, { state: { tableName: trimmedName, tableId: createdTable.id, joinToken } })
+      navigate(`/tables/${encodeURIComponent(createdTable.id)}`, { state: { tableName: trimmedName, tableId: createdTable.id, joinToken } })
     } catch (error: unknown) {
       setErrorMessage(getCreateTableError(error))
     } finally {
@@ -53,7 +53,7 @@ export function CreateTablePage() {
     <main className="app-shell">
       <div className="mobile-shell">
         <header className="page-header">
-          <button className="icon-button" type="button" onClick={() => navigate('/authenticated')} aria-label="Back to home"><ArrowLeft size={18} strokeWidth={2.2} /></button>
+          <button className="icon-button" type="button" onClick={() => navigate('/')} aria-label="Back to lobby"><ArrowLeft size={18} strokeWidth={2.2} /></button>
           <div className="page-titlegroup">
             <span className="eyebrow">New table</span>
             <h1>Create Table</h1>

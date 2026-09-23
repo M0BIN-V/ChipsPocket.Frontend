@@ -11,7 +11,7 @@ export function JoinedLobbyPage() {
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#b7d334]">Table lobby</p>
         <h1 className="mt-3 font-['Space_Grotesk'] text-4xl font-bold tracking-tight">You’re in.</h1>
         <p className="mt-4 text-base leading-7 text-[#a5aaa1]">{tableName ? `You joined ${tableName}.` : 'You joined the table lobby successfully.'}</p>
-        <button className="mt-10 w-full rounded-xl bg-[#b7d334] px-4 py-3.5 font-semibold text-[#151712] transition hover:bg-[#c9e34e] focus:outline-none focus:ring-2 focus:ring-[#d9ed7a] focus:ring-offset-2 focus:ring-offset-[#111311]" type="button" onClick={() => navigate('/authenticated')}>Back to home</button>
+        <button className="mt-10 w-full rounded-xl bg-[#b7d334] px-4 py-3.5 font-semibold text-[#151712] transition hover:bg-[#c9e34e] focus:outline-none focus:ring-2 focus:ring-[#d9ed7a] focus:ring-offset-2 focus:ring-offset-[#111311]" type="button" onClick={() => navigate('/')}>Back to lobby</button>
       </div>
     </main>
   )

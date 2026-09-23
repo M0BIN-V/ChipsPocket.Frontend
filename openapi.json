@@ -395,6 +395,31 @@
         }
       }
     },
+    "/api/tables/my": {
+      "get": {
+        "tags": [
+          "Tables"
+        ],
+        "summary": "Get tables the current user has joined",
+        "description": "Returns a list of poker tables where the currently authenticated user\r\nis a member of the table's lobby.\r\n\r\nOnly tables associated with the current user's lobby memberships are returned.",
+        "operationId": "GetMyTables",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GetMyTablesResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tables/lobby/{tableId}/join-token": {
       "get": {
         "tags": [
@@ -614,6 +639,27 @@
         "properties": {
           "token": {
             "type": "string"
+          }
+        }
+      },
+      "GetMyTablesResponse": {
+        "required": [
+          "tableId",
+          "tableName",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "tableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tableName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

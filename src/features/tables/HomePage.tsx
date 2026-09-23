@@ -1,210 +1,192 @@
-import { AlertTriangle, ChevronRight, Club, LogOut, Plus, QrCode, UserRound, Users, X } from 'lucide-react'
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { AlertTriangle, ChevronRight, Club, LogOut, Plus, Share2, UserRound, Users, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import axios from 'axios'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { QRCodeSVG } from 'qrcode.react'
 import { getMe } from '../../api/auth'
 import { authStorage } from '../../api/authStorage'
-import { getTableInfo, joinTableWithToken } from '../../api/tableLobby'
-import { QRCodeSVG } from 'qrcode.react'
 import type { MeResponse } from '../auth/auth.types'
-import { QrScanner } from './QrScanner'
-import { getJoinTokenFromUrl } from './tableShare'
 
 export function HomePage() {
   const navigate = useNavigate()
-  const { token: routeToken } = useParams<{ token?: string }>()
   const [user, setUser] = useState<MeResponse | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [showQrScanner, setShowQrScanner] = useState(false)
-  const [showAppQr, setShowAppQr] = useState(false)
-  const [showJoinDialog, setShowJoinDialog] = useState(Boolean(routeToken))
-  const [joinCode, setJoinCode] = useState(routeToken ?? '')
-  const [joinError, setJoinError] = useState<string | null>(null)
-  const [isJoining, setIsJoining] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false)
+  const [shareNotice, setShareNotice] = useState<string | null>(null)
+  const shareUrl = new URL('/', window.location.origin).toString()
 
   useEffect(() => {
     let isMounted = true
-    getMe().then((response) => { if (isMounted) setUser(response) }).catch((error: unknown) => {
+    getMe().then((response) => {
+      if (isMounted) setUser(response)
+    }).catch((error: unknown) => {
       if (!isMounted) return
-      if (axios.isAxiosError(error) && error.response?.status === 401) { navigate('/login', { replace: true }); return }
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        navigate('/login', { replace: true })
+        return
+      }
       setErrorMessage('Unable to load your account.')
     })
+
     return () => { isMounted = false }
   }, [navigate])
 
-  function handleLogout() { authStorage.clear(); navigate('/login', { replace: true }) }
+  function handleLogout() {
+    authStorage.clear()
+    setIsProfileOpen(false)
+    navigate('/login', { replace: true })
+  }
 
-  const submitJoinToken = useCallback(async (token: string) => {
-    const normalizedToken = token.trim()
-    if (!normalizedToken) {
-      setJoinError('Enter a join code.')
-      return
+  async function handleShareLink() {
+    const shareData = {
+      title: 'ChipsPocket',
+      text: 'Join me on ChipsPocket and start a poker table.',
+      url: shareUrl,
     }
-    if (!/^[a-z0-9]+$/i.test(normalizedToken)) {
-      setJoinError('Join codes can contain only letters and numbers.')
-      return
-    }
-    setJoinError(null)
-    setIsJoining(true)
+
     try {
-      const tableId = await joinTableWithToken(normalizedToken)
-      const table = await getTableInfo(tableId)
-      setShowQrScanner(false)
-      setShowJoinDialog(false)
-      navigate(`/table/${encodeURIComponent(table.id)}`, { state: { tableId: table.id, tableName: table.name } })
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 404) setJoinError('This join code is invalid or has expired.')
-        else if (error.response?.status === 409) setJoinError('This table lobby is full.')
-        else if (!error.response) setJoinError('Unable to connect to the server. Try again.')
-        else setJoinError('Unable to join this table. Try again.')
-      } else setJoinError('Unable to join this table. Try again.')
-    } finally {
-      setIsJoining(false)
+      if (navigator.share) {
+        await navigator.share(shareData)
+        setShareNotice('Invite shared successfully.')
+        return
+      }
+    } catch {
+      // Fall through to clipboard fallback when the share sheet is cancelled.
     }
-  }, [navigate])
 
-  const handleQrScan = useCallback((value: string): boolean => {
-    const token = getJoinTokenFromUrl(value)
-    if (!token) return false
-    void submitJoinToken(token)
-    return true
-  }, [submitJoinToken])
-
-  function openJoinDialog() {
-    setJoinError(null)
-    setShowJoinDialog(true)
-  }
-
-  function closeJoinDialog() {
-    if (!isJoining) setShowJoinDialog(false)
-  }
-
-  function handleManualJoin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    void submitJoinToken(joinCode)
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setShareNotice('Link copied to your clipboard.')
+    } catch {
+      setShareNotice('Share link is ready below.')
+    }
   }
 
   return (
     <main className="app-shell">
       <div className="mobile-shell">
-        <header className="page-header">
-          <div className="flex items-center gap-3" aria-label="ChipsPocket">
+        <header className="lobby-header">
+          <div className="brand-group" aria-label="ChipsPocket">
             <span className="brand-mark" aria-hidden="true"><Club size={20} strokeWidth={2.2} /></span>
             <span className="brand-title">ChipsPocket</span>
           </div>
-          <button className="ghost-button logout-button" type="button" onClick={handleLogout}><LogOut size={16} strokeWidth={2.2} />Log out</button>
+
+          <div className="profile-shell">
+            <button className="profile-trigger" type="button" onClick={() => setIsProfileOpen((current) => !current)} aria-label="Open account menu">
+              <span className="profile-avatar" aria-hidden="true">{user?.username?.charAt(0)?.toUpperCase() ?? 'P'}</span>
+            </button>
+
+            {isProfileOpen && (
+              <div className="profile-menu" role="menu" aria-label="Account menu">
+                <div className="profile-summary">
+                  <span>Signed in as</span>
+                  <strong>{user?.username ?? 'Player'}</strong>
+                </div>
+                <button className="menu-option" type="button" onClick={() => setIsProfileOpen(false)}>
+                  <UserRound size={16} strokeWidth={2.2} />
+                  <span>Profile</span>
+                </button>
+                <button className="menu-option danger" type="button" onClick={handleLogout}>
+                  <LogOut size={16} strokeWidth={2.2} />
+                  <span>Log out</span>
+                </button>
+              </div>
+            )}
+          </div>
         </header>
 
-        <section className="home-card" aria-label="Main home screen">
-          <div className="welcome-row">
-            <div>
-              <span className="eyebrow">Ready when you are</span>
-              <h1 className="mt-3 font-['Space_Grotesk'] text-4xl font-bold tracking-[-0.06em] text-white">Set up your table.</h1>
-            </div>
-            <div className="user-chip" aria-label="Current user initial"><UserRound size={18} strokeWidth={2.2} /></div>
+        <section className="home-card" aria-label="Main lobby screen">
+          <div className="welcome-panel">
+            <span className="eyebrow">Ready when you are</span>
+            <h1>{user ? `Welcome back, ${user.username}` : 'Welcome back'}</h1>
+            <p>{user ? 'Your next table is waiting.' : 'Loading your account...'}</p>
           </div>
 
-          <p className="mt-4 text-base leading-7 text-[#a5aaa1]">{user ? `Welcome back, ${user.username}.` : 'Loading your account...'} Bring the chips—we’ll handle the details.</p>
-
-          {errorMessage && <div className="form-error mt-4" role="alert"><span aria-hidden="true"><AlertTriangle size={16} strokeWidth={2.3} /></span><span>{errorMessage}</span></div>}
-
-          <div className="summary-grid" aria-label="Quick app stats">
-            <div className="summary-stat">
-              <span>Table</span>
-              <strong>1-2 min</strong>
+          {errorMessage && (
+            <div className="form-error mt-4" role="alert">
+              <span aria-hidden="true"><AlertTriangle size={16} strokeWidth={2.3} /></span>
+              <span>{errorMessage}</span>
             </div>
-            <div className="summary-stat">
-              <span>Seats</span>
-              <strong>10 max</strong>
-            </div>
-            <div className="summary-stat">
-              <span>Share</span>
-              <strong>QR code</strong>
-            </div>
-          </div>
+          )}
 
-          <div className="action-stack mt-6">
+          <div className="action-stack">
             <button className="action-card primary" type="button" onClick={() => navigate('/create-table')}>
-              <span className="action-card-icon" aria-hidden="true"><Plus size={22} strokeWidth={2.4} /></span>
+              <span className="action-card-icon" aria-hidden="true"><Plus size={22} strokeWidth={2.3} /></span>
               <span className="action-copy">
                 <strong>Create Table</strong>
-                <span>Name your table and get started</span>
+                <span>Start a new poker table in seconds</span>
               </span>
               <span className="action-arrow" aria-hidden="true"><ChevronRight size={18} strokeWidth={2.4} /></span>
             </button>
 
-            <button className="action-card" type="button" onClick={openJoinDialog}>
+            <button className="action-card" type="button" onClick={() => navigate('/join')}>
               <span className="action-card-icon" aria-hidden="true"><Users size={20} strokeWidth={2.3} /></span>
               <span className="action-copy">
                 <strong>Join Table</strong>
-                <span>Scan a QR code or use a join code</span>
+                <span>Use a code or jump back into one of your tables</span>
               </span>
               <span className="action-arrow" aria-hidden="true"><ChevronRight size={18} strokeWidth={2.4} /></span>
             </button>
 
+            <button className="action-card" type="button" onClick={() => setIsShareSheetOpen(true)}>
+              <span className="action-card-icon" aria-hidden="true"><Share2 size={20} strokeWidth={2.2} /></span>
+              <span className="action-copy">
+                <strong>Invite Friends</strong>
+                <span>Share ChipsPocket and get everyone in the game</span>
+              </span>
+              <span className="action-arrow" aria-hidden="true"><ChevronRight size={18} strokeWidth={2.4} /></span>
+            </button>
           </div>
-
-          <button className="app-share-button" type="button" onClick={() => setShowAppQr(true)}>
-            <QrCode size={17} strokeWidth={2.3} />
-            <span>Share app QR code</span>
-          </button>
         </section>
       </div>
 
-      {showAppQr && (
-        <div className="sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAppQr(false) }}>
-          <section className="sheet-card" role="dialog" aria-modal="true" aria-labelledby="share-app-title">
+      {isShareSheetOpen && (
+        <div className="sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsShareSheetOpen(false) }}>
+          <section className="sheet-card" role="dialog" aria-modal="true" aria-labelledby="invite-friends-title">
             <div className="sheet-header">
               <div>
-                <span className="eyebrow">Invite your players</span>
-                <h2 id="share-app-title">Join ChipsPocket</h2>
+                <span className="eyebrow">Invite friends</span>
+                <h2 id="invite-friends-title">Share ChipsPocket</h2>
               </div>
-              <button className="icon-button" type="button" onClick={() => setShowAppQr(false)} aria-label="Close app QR code"><X size={18} strokeWidth={2.2} /></button>
+              <button className="icon-button" type="button" onClick={() => setIsShareSheetOpen(false)} aria-label="Close share dialog"><X size={18} strokeWidth={2.2} /></button>
             </div>
 
-            <p className="mt-3 text-sm leading-6 text-[#a5aaa1]">Scan this code to open ChipsPocket and log in or create an account.</p>
+            <p className="mt-3 text-sm leading-6 text-[#a5aaa1]">Send your friends the link or scan the QR code to jump into the app.</p>
+
             <div className="qr-wrapper" aria-label="QR code to open ChipsPocket">
-              <QRCodeSVG value={new URL('/', window.location.origin).toString()} size={240} level="M" includeMargin bgColor="#ffffff" fgColor="#111311" aria-label="QR code to open ChipsPocket" />
+              <QRCodeSVG value={shareUrl} size={220} level="M" includeMargin bgColor="#ffffff" fgColor="#111311" aria-label="QR code to open ChipsPocket" />
             </div>
-            <p className="join-code-surface text-center">{new URL('/', window.location.origin).toString()}</p>
+
+            <div className="share-actions">
+              <button className="primary-button" type="button" onClick={() => { void handleShareLink() }}>
+                <Share2 size={18} strokeWidth={2.2} />
+                <span>Share link</span>
+              </button>
+              <button className="secondary-button" type="button" onClick={() => {
+                void (async () => {
+                  try {
+                    await navigator.clipboard.writeText(shareUrl)
+                    setShareNotice('Link copied to your clipboard.')
+                  } catch {
+                    setShareNotice('Share link is ready below.')
+                  }
+                })()
+              }}>
+                Copy link
+              </button>
+            </div>
+
+            <p className="join-code-surface text-center">{shareUrl}</p>
           </section>
         </div>
       )}
 
-      {showJoinDialog && (
-        <div className="sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeJoinDialog() }}>
-          <section className="sheet-card" role="dialog" aria-modal="true" aria-labelledby="join-table-title">
-            <div className="sheet-header">
-              <div>
-                <span className="eyebrow">Join a table</span>
-                <h2 id="join-table-title">Join Table</h2>
-              </div>
-              <button className="icon-button" type="button" onClick={closeJoinDialog} aria-label="Close join table dialog"><X size={18} strokeWidth={2.2} /></button>
-            </div>
-
-            <button className="primary-button mt-6" type="button" onClick={() => { setJoinError(null); setShowQrScanner(true) }} disabled={isJoining}>
-              <QrCode size={18} strokeWidth={2.2} />
-              <span>Scan QR code</span>
-            </button>
-
-            <div className="form-divider">or</div>
-
-            <form onSubmit={handleManualJoin}>
-              <div className="form-field">
-                <label htmlFor="join-code">Enter join code</label>
-                <input className="form-input tracking-[0.12em]" id="join-code" value={joinCode} onChange={(event) => { setJoinCode(event.target.value); setJoinError(null) }} placeholder="A7K92X" inputMode="text" pattern="[A-Za-z0-9]+" disabled={isJoining} autoComplete="off" />
-              </div>
-
-              {joinError && <div className="form-error mt-3" role="alert"><span aria-hidden="true"><AlertTriangle size={16} strokeWidth={2.3} /></span><span>{joinError}</span></div>}
-
-              <button className="secondary-button mt-4" type="submit" disabled={isJoining}>{isJoining ? 'Joining...' : 'Join'}</button>
-            </form>
-          </section>
-        </div>
+      {shareNotice && (
+        <p className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-[#b7d334]/30 bg-[#b7d334]/10 px-4 py-3 text-center text-sm text-[#d9ed7a]" role="status">
+          {shareNotice}
+        </p>
       )}
-
-      {showQrScanner && <QrScanner onScan={handleQrScan} onClose={() => setShowQrScanner(false)} />}
     </main>
   )
 }

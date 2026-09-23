@@ -46,6 +46,12 @@ export interface GetJoinTokenResponse {
   token: string
 }
 
+export interface GetMyTablesResponse {
+  tableId: string
+  tableName: string
+  createdAt: string
+}
+
 export interface LobbyUserResponse {
   id: string
   username: string

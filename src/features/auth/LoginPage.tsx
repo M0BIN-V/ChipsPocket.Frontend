@@ -35,7 +35,7 @@ export function LoginPage() {
         try {
             const response = await login({ username: trimmedUsername, password })
             authStorage.set(response.accessToken, response.expiresAt)
-            navigate('/authenticated', { replace: true })
+            navigate('/', { replace: true })
         } catch (error: unknown) {
             setErrorMessage(getLoginError(error))
         } finally {
@@ -85,7 +85,7 @@ export function LoginPage() {
                     </form>
 
                     <p className="mt-5 text-center text-sm text-[#a5aaa1]">Need an account? <Link className="inline-link" to="/register">Register</Link></p>
-                    <Link className="mt-3 inline-flex items-center justify-center gap-2 text-center text-sm text-[#7f8779] hover:text-[#d9ed7a]" to="/"><ArrowLeft size={14} strokeWidth={2.2} />Back to entry page</Link>
+                    <Link className="mt-3 inline-flex items-center justify-center gap-2 text-center text-sm text-[#7f8779] hover:text-[#d9ed7a]" to="/welcome"><ArrowLeft size={14} strokeWidth={2.2} />Back to entry page</Link>
                 </section>
             </div>
         </main>
