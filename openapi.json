@@ -344,6 +344,61 @@
         }
       }
     },
+    "/api/tables/{tableId}/cash-out": {
+      "post": {
+        "tags": [
+          "Tables"
+        ],
+        "summary": "Create a cash-out transaction",
+        "description": "Creates a cash-out transaction that transfers chips\r\nfrom a user to the table shop.\r\n\r\nuser should have enough chips to cash-out, otherwise it will return a bad request.\r\n\r\nOnly the table manager can perform a cash-out.\r\nThe source user must currently be a member of the\r\ntable lobby.\r\nThe specified chip must exist.",
+        "parameters": [
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashOutRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tables/{tableId}/user-stack/{userId}": {
       "get": {
         "tags": [
@@ -592,6 +647,31 @@
         "type": "object",
         "properties": {
           "destinationUserId": {
+            "type": "string"
+          },
+          "chipId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chipCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "CashOutRequest": {
+        "required": [
+          "sourceUserId",
+          "chipId",
+          "chipCount"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceUserId": {
             "type": "string"
           },
           "chipId": {

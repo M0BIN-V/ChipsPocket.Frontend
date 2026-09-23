@@ -16,6 +16,12 @@ export interface BuyInRequest {
   chipCount: number
 }
 
+export interface CashOutRequest {
+  sourceUserId: string
+  chipId: string
+  chipCount: number
+}
+
 export interface UserStackChipResponse {
   chipId: string
   name: string
