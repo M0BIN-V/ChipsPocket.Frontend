@@ -2,13 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { AlertTriangle, ArrowLeft, Club, Diamond, Heart, LoaderCircle, Plus, Share2, Spade, Users, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Club, Crown, Diamond, Heart, LoaderCircle, Plus, Share2, Spade, Users, X } from 'lucide-react'
 import { getMe } from '../../api/auth'
 import { claimTableSeat, getTableInfo, getTableJoinToken, getTableLobbyUsers, releaseTableSeat } from '../../api/tableLobby'
 import { useTableRealtime } from '../../realtime/useTableRealtime'
 import type { LobbyUserResponse, TableInfoResponse, TableSeatInfo } from './table.types'
 import { getPlayerInitials, seatPositions } from './tableSeatLayout'
 import { buildTableJoinUrl } from './tableShare'
+import { PlayerDetailsModal } from './PlayerDetailsModal'
 
 interface TableLocationState {
   joinToken?: string
@@ -22,6 +23,7 @@ export function TablePage() {
   const { tableId: routeTableId } = useParams<{ tableId: string }>()
   const tableState = location.state as TableLocationState | null
   const [currentUserName, setCurrentUserName] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [tableInfo, setTableInfo] = useState<TableInfoResponse | null>(null)
   const [isTableLoading, setIsTableLoading] = useState(true)
   const [tableError, setTableError] = useState<string | null>(null)
@@ -35,10 +37,12 @@ export function TablePage() {
   const [lobbyUsers, setLobbyUsers] = useState<LobbyUserResponse[]>([])
   const [isLobbyLoading, setIsLobbyLoading] = useState(false)
   const [lobbyError, setLobbyError] = useState<string | null>(null)
+  const [selectedPlayer, setSelectedPlayer] = useState<{ id?: string; username: string } | null>(null)
   const tableId = routeTableId?.trim() || tableState?.tableId?.trim()
   const tableName = tableInfo?.name ?? tableState?.tableName ?? 'Poker table'
   const joinUrl = joinToken ? buildTableJoinUrl(joinToken) : null
   const tableLoadError = tableError ?? (!tableId ? 'Table information is unavailable.' : null)
+  const isManager = Boolean(currentUserId && tableInfo?.managerId && currentUserId === tableInfo.managerId)
   const { status: realtimeStatus, error: realtimeError } = useTableRealtime(tableId, {
     onPlayerJoinedToLobby: (notification) => {
       setLobbyUsers((currentUsers) => currentUsers.some((user) => user.id === notification.userId)
@@ -128,7 +132,10 @@ export function TablePage() {
   useEffect(() => {
     let isMounted = true
     getMe().then((user) => {
-      if (isMounted) setCurrentUserName(user.username)
+      if (isMounted) {
+        setCurrentUserId(user.id)
+        setCurrentUserName(user.username)
+      }
     }).catch(() => {})
     return () => { isMounted = false }
   }, [])
@@ -161,6 +168,21 @@ export function TablePage() {
     }).finally(() => {
       setIsLobbyLoading(false)
     })
+  }
+
+  async function handlePlayerSelect(player: { id?: string; username: string }) {
+    if (player.id || lobbyUsers.length > 0) {
+      setSelectedPlayer(player.id ? player : { ...player, id: lobbyUsers.find((user) => user.username === player.username)?.id })
+      return
+    }
+
+    try {
+      const users = await getTableLobbyUsers(tableId ?? '')
+      setLobbyUsers(users)
+      setSelectedPlayer({ ...player, id: users.find((user) => user.username === player.username)?.id })
+    } catch {
+      setSelectedPlayer(player)
+    }
   }
 
   async function handleShareOpen() {
@@ -303,8 +325,8 @@ export function TablePage() {
                       className={`table-seat ${className} ${username ? 'table-seat-occupied' : 'table-seat-open'} ${isCurrentUser ? 'table-seat-selected' : ''}`}
                       key={seatInfo?.id ?? seat}
                       type="button"
-                      onClick={() => { if (!seatInfo) return; if (isCurrentUser) void handleSeatRelease(seatInfo); else if (!seatInfo.user) void handleSeatClaim(seatInfo) }}
-                      disabled={!seatInfo || Boolean(seatActionId) || (Boolean(username) && !isCurrentUser)}
+                      onClick={() => { if (!seatInfo) return; if (isCurrentUser) void handleSeatRelease(seatInfo); else if (username) void handlePlayerSelect({ id: seatInfo.user?.id, username }); else void handleSeatClaim(seatInfo) }}
+                      disabled={!seatInfo || Boolean(seatActionId)}
                       aria-label={isActionInProgress ? `${isCurrentUser ? 'Releasing' : 'Claiming'} seat ${seat}` : label}
                       aria-pressed={isCurrentUser}
                     >
@@ -364,9 +386,14 @@ export function TablePage() {
               {!isLobbyLoading && !lobbyError && lobbyUsers.length > 0 && (
                 <ul className="space-y-2">
                   {lobbyUsers.map((user) => (
-                    <li className="flex items-center gap-3 rounded-2xl bg-[#111311] px-3 py-3" key={user.id}>
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#b7d334]/15 text-sm font-semibold text-[#d9ed7a]" aria-hidden="true">{getPlayerInitials(user.username)}</span>
-                      <span className="text-sm font-medium">{user.username}</span>
+                    <li key={user.id}>
+                      <button className="flex w-full items-center justify-between gap-3 rounded-2xl bg-[#111311] px-3 py-3 text-left transition hover:bg-[#1a2019]" type="button" onClick={() => { void handlePlayerSelect(user) }}>
+                        <span className="flex min-w-0 items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#b7d334]/15 text-sm font-semibold text-[#d9ed7a]" aria-hidden="true">{getPlayerInitials(user.username)}</span>
+                          <span className="truncate text-sm font-medium">{user.username}</span>
+                        </span>
+                        {user.id === tableInfo?.managerId && <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#b7d334]/35 bg-[#b7d334]/10 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-[#d9ed7a]"><Crown size={12} strokeWidth={2.3} />Manager</span>}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -378,6 +405,7 @@ export function TablePage() {
 
       {seatActionError && <p className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-[#e27350]/30 bg-[#e27350]/10 px-4 py-3 text-center text-sm text-[#ffad93]" role="alert">{seatActionError}</p>}
       {shareError && <p className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-[#e27350]/30 bg-[#e27350]/10 px-4 py-3 text-center text-sm text-[#ffad93]" role="alert">{shareError}</p>}
+      {selectedPlayer && tableId && <PlayerDetailsModal key={selectedPlayer.id ?? selectedPlayer.username} tableId={tableId} player={{ ...selectedPlayer, id: selectedPlayer.id ?? (selectedPlayer.username === currentUserName ? currentUserId ?? undefined : undefined) }} isManager={isManager} onClose={() => setSelectedPlayer(null)} />}
     </main>
   )
 }

@@ -779,6 +779,21 @@ img, video, svg { display: block; max-width: 100%; }
   padding: 20px 18px 18px;
 }
 
+.player-details-sheet {
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.player-details-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
 .sheet-header {
   display: flex;
   align-items: flex-start;
