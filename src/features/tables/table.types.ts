@@ -39,7 +39,7 @@ export interface JoinResponse {
 export interface TableSeatInfo {
   id: string
   order: number
-  user: { username: string } | null
+  user: { id?: string; username: string } | null
 }
 
 export interface TableInfoResponse {

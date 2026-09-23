@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { AlertTriangle, ArrowLeft, Club, Diamond, Heart, LoaderCircle, Plus, Share2, Spade, Users, X } from 'lucide-react'
 import { getMe } from '../../api/auth'
 import { claimTableSeat, getTableInfo, getTableJoinToken, getTableLobbyUsers, releaseTableSeat } from '../../api/tableLobby'
+import { useTableRealtime } from '../../realtime/useTableRealtime'
 import type { LobbyUserResponse, TableInfoResponse, TableSeatInfo } from './table.types'
 import { getPlayerInitials, seatPositions } from './tableSeatLayout'
 import { buildTableJoinUrl } from './tableShare'
@@ -38,6 +39,32 @@ export function TablePage() {
   const tableName = tableInfo?.name ?? tableState?.tableName ?? 'Poker table'
   const joinUrl = joinToken ? buildTableJoinUrl(joinToken) : null
   const tableLoadError = tableError ?? (!tableId ? 'Table information is unavailable.' : null)
+  const { status: realtimeStatus, error: realtimeError } = useTableRealtime(tableId, {
+    onPlayerJoinedToLobby: (notification) => {
+      setLobbyUsers((currentUsers) => currentUsers.some((user) => user.id === notification.userId)
+        ? currentUsers
+        : [...currentUsers, { id: notification.userId, username: notification.username }])
+    },
+    onPlayerClaimedSeat: (notification) => {
+      setTableInfo((currentTable) => {
+        if (!currentTable) return currentTable
+
+        const isNotifiedPlayer = (user: TableSeatInfo['user']) => {
+          if (!user) return false
+          return user.id ? user.id === notification.userId : user.username === notification.username
+        }
+
+        return {
+          ...currentTable,
+          seats: currentTable.seats.map((seat) => {
+            if (seat.id === notification.seatId) return { ...seat, user: { id: notification.userId, username: notification.username } }
+            if (isNotifiedPlayer(seat.user)) return { ...seat, user: null }
+            return seat
+          }),
+        }
+      })
+    },
+  })
 
   const loadTableInfo = useCallback(async () => {
     if (!tableId) {
@@ -214,7 +241,11 @@ export function TablePage() {
               <p className="text-xs uppercase tracking-[0.18em] text-[#8e968a]">Table status</p>
               <p className="mt-2 text-lg font-semibold text-white">{currentUserSeat ? `Seat ${currentUserSeat.order} is yours` : 'Choose your seat'}</p>
             </div>
+            <span className="text-right text-xs text-[#8e968a]" role="status">
+              {realtimeStatus === 'connected' ? 'Live updates' : realtimeStatus === 'reconnecting' || realtimeStatus === 'connecting' ? 'Connecting...' : 'Live updates unavailable'}
+            </span>
           </div>
+          {realtimeError && <p className="mt-3 text-xs text-[#ffad93]" role="alert">{realtimeError}</p>}
 
           <div className="table-summary mt-4">
             <span className="table-pill"><span className="pill-dot" /> {occupiedSeats}/{tableInfo?.seats.length ?? 10} occupied</span>
