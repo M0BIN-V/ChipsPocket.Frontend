@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { getMe } from '../../api/auth'
 import { authStorage } from '../../api/authStorage'
 import { getTableInfo, joinTableWithToken } from '../../api/tableLobby'
+import { QRCodeSVG } from 'qrcode.react'
 import type { MeResponse } from '../auth/auth.types'
 import { QrScanner } from './QrScanner'
 import { getJoinTokenFromUrl } from './tableShare'
@@ -15,6 +16,7 @@ export function HomePage() {
   const [user, setUser] = useState<MeResponse | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showQrScanner, setShowQrScanner] = useState(false)
+  const [showAppQr, setShowAppQr] = useState(false)
   const [showJoinDialog, setShowJoinDialog] = useState(Boolean(routeToken))
   const [joinCode, setJoinCode] = useState(routeToken ?? '')
   const [joinError, setJoinError] = useState<string | null>(null)
@@ -140,9 +142,35 @@ export function HomePage() {
               </span>
               <span className="action-arrow" aria-hidden="true"><ChevronRight size={18} strokeWidth={2.4} /></span>
             </button>
+
           </div>
+
+          <button className="app-share-button" type="button" onClick={() => setShowAppQr(true)}>
+            <QrCode size={17} strokeWidth={2.3} />
+            <span>Share app QR code</span>
+          </button>
         </section>
       </div>
+
+      {showAppQr && (
+        <div className="sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAppQr(false) }}>
+          <section className="sheet-card" role="dialog" aria-modal="true" aria-labelledby="share-app-title">
+            <div className="sheet-header">
+              <div>
+                <span className="eyebrow">Invite your players</span>
+                <h2 id="share-app-title">Join ChipsPocket</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={() => setShowAppQr(false)} aria-label="Close app QR code"><X size={18} strokeWidth={2.2} /></button>
+            </div>
+
+            <p className="mt-3 text-sm leading-6 text-[#a5aaa1]">Scan this code to open ChipsPocket and log in or create an account.</p>
+            <div className="qr-wrapper" aria-label="QR code to open ChipsPocket">
+              <QRCodeSVG value={new URL('/', window.location.origin).toString()} size={240} level="M" includeMargin bgColor="#ffffff" fgColor="#111311" aria-label="QR code to open ChipsPocket" />
+            </div>
+            <p className="join-code-surface text-center">{new URL('/', window.location.origin).toString()}</p>
+          </section>
+        </div>
+      )}
 
       {showJoinDialog && (
         <div className="sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeJoinDialog() }}>

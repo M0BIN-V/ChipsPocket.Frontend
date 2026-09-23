@@ -704,6 +704,37 @@ img, video, svg { display: block; max-width: 100%; }
   gap: 14px;
 }
 
+.app-share-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  margin: 14px auto 0;
+  min-height: 44px;
+  padding: 0.55rem 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--chip-strong);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(183, 211, 52, 0.45);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.app-share-button:hover {
+  color: #e1f58b;
+  text-decoration-color: currentColor;
+}
+
+.app-share-button:focus-visible {
+  outline: 3px solid rgba(183, 211, 52, 0.32);
+  outline-offset: 3px;
+}
+
 .action-card {
   display: flex;
   align-items: center;
