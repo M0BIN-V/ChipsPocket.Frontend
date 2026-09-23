@@ -64,6 +64,16 @@ export function TablePage() {
         }
       })
     },
+    onPlayerReleasedSeat: (notification) => {
+      setTableInfo((currentTable) => currentTable && {
+        ...currentTable,
+        seats: currentTable.seats.map((seat) => {
+          const isReleasedSeat = seat.id === notification.seatId
+          const isReleasedPlayerDuplicate = Boolean(notification.userId && seat.user?.id === notification.userId)
+          return isReleasedSeat || isReleasedPlayerDuplicate ? { ...seat, user: null } : seat
+        }),
+      })
+    },
   })
 
   const loadTableInfo = useCallback(async () => {

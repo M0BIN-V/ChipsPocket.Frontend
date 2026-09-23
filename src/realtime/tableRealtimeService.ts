@@ -17,11 +17,17 @@ export interface PlayerClaimedSeatNotification {
   username: string
 }
 
+export interface PlayerReleasedSeatNotification {
+  seatId: string
+  userId?: string
+}
+
 export type TableRealtimeStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error'
 
 export interface TableRealtimeHandlers {
   onPlayerJoinedToLobby?: (notification: PlayerJoinedToLobbyNotification) => void
   onPlayerClaimedSeat?: (notification: PlayerClaimedSeatNotification) => void
+  onPlayerReleasedSeat?: (notification: PlayerReleasedSeatNotification) => void
   onStatusChange?: (status: TableRealtimeStatus) => void
   onError?: (message: string) => void
 }
@@ -57,6 +63,14 @@ function parsePlayerClaimedSeatNotification(payload: unknown): PlayerClaimedSeat
   const userId = getString(object, 'UserId', 'userId')
   const username = getString(object, 'Username', 'username')
   return seatId && userId && username ? { seatId, userId, username } : null
+}
+
+function parsePlayerReleasedSeatNotification(payload: unknown): PlayerReleasedSeatNotification | null {
+  const object = asObject(payload)
+  if (!object) return null
+  const seatId = getString(object, 'SeatId', 'seatId')
+  const userId = getString(object, 'UserId', 'userId')
+  return seatId ? { seatId, userId: userId ?? undefined } : null
 }
 
 function getHubUrl(): string {
@@ -141,6 +155,12 @@ export class TableRealtimeService {
       if (notification && this.isCurrent(connection, tableId, operationId)) this.handlers?.onPlayerClaimedSeat?.(notification)
     })
 
+    connection.on('PlayerReleasedSeatNotification', (payload: unknown) => {
+      console.log('[SignalR] Event received: PlayerReleasedSeatNotification', payload)
+      const notification = parsePlayerReleasedSeatNotification(payload)
+      if (notification && this.isCurrent(connection, tableId, operationId)) this.handlers?.onPlayerReleasedSeat?.(notification)
+    })
+
     connection.onreconnecting((error) => {
       if (this.isCurrent(connection, tableId, operationId)) {
         this.notifyStatus(connection, operationId, 'reconnecting')
@@ -184,6 +204,7 @@ export class TableRealtimeService {
     if (!connection) return
     connection.off('PlayerJoinedToLobbyNotification')
     connection.off('PlayerClaimedSeatNotification')
+    connection.off('PlayerReleasedSeatNotification')
     if (connection.state !== HubConnectionState.Disconnected) await connection.stop().catch(() => {})
   }
 }

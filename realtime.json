@@ -7,7 +7,7 @@
       "clientMethods": [
         {
           "name": "JoinTable",
-          "description": "Should called when user wants to recieve table notifications",
+          "description": "Should called when user wants to receive table notifications",
           "parameters": [
             {
               "name": "tableId",
@@ -20,7 +20,7 @@
       "serverEvents": [
         {
           "name": "PlayerJoinedToLobbyNotification",
-          "description": null,
+          "description": "Sent when a player joins a table lobby",
           "payloadType": "PlayerJoinedToLobbyNotification",
           "payloadSchema": {
             "type": "object",
@@ -36,7 +36,7 @@
         },
         {
           "name": "PlayerClaimedSeatNotification",
-          "description": null,
+          "description": "Sent when a player claims a seat.",
           "payloadType": "PlayerClaimedSeatNotification",
           "payloadSchema": {
             "type": "object",
@@ -50,6 +50,26 @@
               },
               "Username": {
                 "type": "string"
+              }
+            },
+            "required": [
+              "SeatId"
+            ]
+          }
+        },
+        {
+          "name": "PlayerReleasedSeatNotification",
+          "description": "Sent when ap player releases a seat",
+          "payloadType": "PlayerReleasedSeatNotification",
+          "payloadSchema": {
+            "type": "object",
+            "properties": {
+              "UserId": {
+                "type": "string"
+              },
+              "SeatId": {
+                "type": "string",
+                "format": "uuid"
               }
             },
             "required": [

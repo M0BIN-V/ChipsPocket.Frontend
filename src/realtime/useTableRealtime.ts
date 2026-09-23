@@ -3,12 +3,14 @@ import {
   TableRealtimeService,
   type PlayerClaimedSeatNotification,
   type PlayerJoinedToLobbyNotification,
+  type PlayerReleasedSeatNotification,
   type TableRealtimeStatus,
 } from './tableRealtimeService'
 
 export interface UseTableRealtimeHandlers {
   onPlayerJoinedToLobby?: (notification: PlayerJoinedToLobbyNotification) => void
   onPlayerClaimedSeat?: (notification: PlayerClaimedSeatNotification) => void
+  onPlayerReleasedSeat?: (notification: PlayerReleasedSeatNotification) => void
 }
 
 export function useTableRealtime(tableId: string | undefined, handlers: UseTableRealtimeHandlers) {
@@ -34,6 +36,9 @@ export function useTableRealtime(tableId: string | undefined, handlers: UseTable
       },
       onPlayerClaimedSeat: (notification) => {
         if (isMounted) handlersRef.current.onPlayerClaimedSeat?.(notification)
+      },
+      onPlayerReleasedSeat: (notification) => {
+        if (isMounted) handlersRef.current.onPlayerReleasedSeat?.(notification)
       },
       onStatusChange: (nextStatus) => {
         if (isMounted) {
