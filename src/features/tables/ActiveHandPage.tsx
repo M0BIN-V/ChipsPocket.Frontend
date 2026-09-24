@@ -133,19 +133,26 @@ export function ActiveHandPage() {
     const remainingChips = sourceStack.chips.filter((chip) => !drag.chipIds.includes(chip.id))
     const destination: StackSource = getDropTarget(clientX, clientY) ? 'pot' : 'player'
     const destinationStacks = destination === 'player' ? currentHand.myStack : currentHand.potChips
-    const position = drag.position
-    const target = destinationStacks.find((stack) => stack.id !== sourceStack.id && Math.hypot(stack.position.x - position.x, stack.position.y - position.y) < STACK_SNAP_DISTANCE)
+    const releasePosition = toPosition(clientX, clientY)
+    const position = {
+      x: Math.max(0.04, Math.min(0.96, releasePosition.x - drag.grabOffset.x)),
+      y: Math.max(0.08, Math.min(0.92, releasePosition.y - drag.grabOffset.y)),
+    }
+    const target = destination === 'pot'
+      ? undefined
+      : destinationStacks.find((stack) => stack.id !== sourceStack.id && Math.hypot(stack.position.x - position.x, stack.position.y - position.y) < STACK_SNAP_DISTANCE)
     const keptSource = remainingChips.length > 0 ? [{ ...sourceStack, chips: remainingChips }] : []
     const withoutSource = sourceStacks.filter((stack) => stack.id !== sourceStack.id)
+    const remainingSourceStacks = [...withoutSource, ...keptSource]
     const nextDestination = destination === drag.source ? withoutSource : destinationStacks
     const mergedDestination = target
       ? nextDestination.map((stack) => stack.id === target.id ? { ...stack, chips: [...stack.chips, ...draggedChips] } : stack)
       : [...nextDestination, { id: `${destination}-stack-${Date.now()}`, chips: draggedChips, position }]
     const nextPlayerStacks = drag.source === 'player'
-      ? destination === 'player' ? [...keptSource, ...mergedDestination] : [...keptSource]
+      ? destination === 'player' ? [...keptSource, ...mergedDestination] : remainingSourceStacks
       : destination === 'player' ? mergedDestination : currentHand.myStack
     const nextPotStacks = drag.source === 'pot'
-      ? destination === 'pot' ? [...keptSource, ...mergedDestination] : [...keptSource]
+      ? destination === 'pot' ? [...keptSource, ...mergedDestination] : remainingSourceStacks
       : destination === 'pot' ? mergedDestination : currentHand.potChips
     setHand({ ...currentHand, myStack: nextPlayerStacks, potChips: nextPotStacks })
     setDrag(null)
@@ -182,7 +189,7 @@ export function ActiveHandPage() {
     const position = isDragged ? drag.position : stack.position
     return (
       <div
-        className={`chip-stack ${isDragged ? 'chip-stack-dragging' : ''}`}
+        className={`chip-stack ${chips.length === 1 ? 'chip-stack-single' : ''} ${isDragged ? 'chip-stack-dragging' : ''}`}
         key={stack.id}
         style={{ left: `${position.x * 100}%`, top: `${position.y * 100}%` }}
         onPointerDown={(event) => beginDrag(event, source, stack, true)}
