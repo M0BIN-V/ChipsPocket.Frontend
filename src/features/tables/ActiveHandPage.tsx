@@ -5,7 +5,7 @@ import { mockHandService } from '../../api/handService'
 import { getAvailableAction } from './handAction'
 import type { Chip, ChipStack, HandPlayer, HandState } from './hand.types'
 
-const STACK_SNAP_DISTANCE = 0.12
+const STACK_SNAP_DISTANCE = 0.06
 const CHIP_HEIGHT = 0.9
 
 type StackSource = 'player' | 'pot'
@@ -122,6 +122,17 @@ export function ActiveHandPage() {
     return Boolean(potRect && clientX >= potRect.left && clientX <= potRect.right && clientY >= potRect.top && clientY <= potRect.bottom)
   }
 
+  function findSnapTarget(stacks: ChipStack[], sourceStackId: string, position: { x: number; y: number }) {
+    const board = boardRef.current?.getBoundingClientRect()
+    if (!board) return undefined
+    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+    const chipOffset = CHIP_HEIGHT * rootFontSize / board.height
+    return stacks.find((stack) => {
+      if (stack.id === sourceStackId) return false
+      return stack.chips.some((_, index) => Math.hypot(stack.position.x - position.x, stack.position.y - index * chipOffset - position.y) < STACK_SNAP_DISTANCE)
+    })
+  }
+
   function finishDrag(clientX: number, clientY: number) {
     if (!drag) return
     const currentHand = hand
@@ -138,9 +149,7 @@ export function ActiveHandPage() {
       x: Math.max(0.04, Math.min(0.96, releasePosition.x - drag.grabOffset.x)),
       y: Math.max(0.08, Math.min(0.92, releasePosition.y - drag.grabOffset.y)),
     }
-    const target = destination === 'pot'
-      ? undefined
-      : destinationStacks.find((stack) => stack.id !== sourceStack.id && Math.hypot(stack.position.x - position.x, stack.position.y - position.y) < STACK_SNAP_DISTANCE)
+    const target = destination === 'pot' ? undefined : findSnapTarget(destinationStacks, sourceStack.id, position)
     const keptSource = remainingChips.length > 0 ? [{ ...sourceStack, chips: remainingChips }] : []
     const withoutSource = sourceStacks.filter((stack) => stack.id !== sourceStack.id)
     const remainingSourceStacks = [...withoutSource, ...keptSource]
