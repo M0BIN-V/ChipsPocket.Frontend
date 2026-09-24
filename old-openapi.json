@@ -125,7 +125,7 @@
           "Tables"
         ],
         "summary": "Create a poker table",
-        "description": "Creates a new poker table for the authenticated user.\r\n\r\nThe authenticated user becomes the owner of the table and is\r\nautomatically added to the table's members.\r\n\r\nA user cannot create multiple tables with the same name.",
+        "description": "Creates a new poker table for the authenticated user.\r\n\r\nThe authenticated user becomes the owner of the table and is\r\nautomatically added to the table's lobby.\r\n\r\nA user cannot create multiple tables with the same name.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -179,7 +179,7 @@
           "Tables"
         ],
         "summary": "Get table information",
-        "description": "Returns the details of a poker table, including its name and seats.\r\n\r\nThe authenticated user must be a member of the table.\r\nUsers who are not members of the table are forbidden from accessing\r\nthe table information.",
+        "description": "Returns the details of a poker table, including its name and seats.\r\n\r\nThe authenticated user must be a member of the table's lobby.\r\nUsers who are not members of the lobby are forbidden from accessing\r\nthe table information.",
         "parameters": [
           {
             "name": "tableId",
@@ -211,7 +211,7 @@
           "Tables"
         ],
         "summary": "Claim a table seat",
-        "description": "Claims a seat at a poker table for the authenticated user.\r\n\r\nThe user must be a member of the table.\r\n\r\nIf the user is already sitting at another seat at the same\r\ntable, their previous seat is released and the requested\r\nseat becomes their new seat.\r\n\r\nThe requested seat must belong to the specified table and\r\nmust not already be occupied by another user.",
+        "description": "Claims a seat at a poker table for the authenticated user.\r\n\r\nThe user must be a member of the table's lobby.\r\n\r\nIf the user is already sitting at another seat at the same\r\ntable, their previous seat is released and the requested\r\nseat becomes their new seat.\r\n\r\nThe requested seat must belong to the specified table and\r\nmust not already be occupied by another user.",
         "parameters": [
           {
             "name": "tableId",
@@ -258,7 +258,7 @@
           "Tables"
         ],
         "summary": "Release a table seat",
-        "description": "Releases a seat currently occupied by the authenticated user.\r\n\r\nThe user must be a member of the table players and can only\r\nrelease a seat that they currently occupy.\r\n\r\nIf the seat is already empty, the operation succeeds without\r\nmaking any changes.",
+        "description": "Releases a seat currently occupied by the authenticated user.\r\n\r\nThe user must be a member of the table's lobby and can only\r\nrelease a seat that they currently occupy.\r\n\r\nIf the seat is already empty, the operation succeeds without\r\nmaking any changes.",
         "parameters": [
           {
             "name": "tableId",
@@ -295,7 +295,7 @@
           "Tables"
         ],
         "summary": "Create a buy-in transaction",
-        "description": "Creates a buy-in transaction that transfers chips from the table shop\r\nto a user in the table players.\r\n\r\nOnly the table manager can perform a buy-in.\r\nThe destination user must currently be a member of the table.\r\nThe specified chip must exist.",
+        "description": "Creates a buy-in transaction that transfers chips from the table shop\r\nto a user in the table lobby.\r\n\r\nOnly the table manager can perform a buy-in.\r\nThe destination user must currently be a member of the table lobby.\r\nThe specified chip must exist.",
         "parameters": [
           {
             "name": "tableId",
@@ -350,7 +350,7 @@
           "Tables"
         ],
         "summary": "Create a cash-out transaction",
-        "description": "Creates a cash-out transaction that transfers chips\r\nfrom a user to the table shop.\r\n\r\nuser should have enough chips to cash-out, otherwise it will return a bad request.\r\n\r\nOnly the table manager can perform a cash-out.\r\nThe source user must currently be a member of the\r\ntable.\r\nThe specified chip must exist.",
+        "description": "Creates a cash-out transaction that transfers chips\r\nfrom a user to the table shop.\r\n\r\nuser should have enough chips to cash-out, otherwise it will return a bad request.\r\n\r\nOnly the table manager can perform a cash-out.\r\nThe source user must currently be a member of the\r\ntable lobby.\r\nThe specified chip must exist.",
         "parameters": [
           {
             "name": "tableId",
@@ -456,7 +456,7 @@
           "Tables"
         ],
         "summary": "Get tables the current user has joined",
-        "description": "Returns a list of poker tables where the currently authenticated user\r\nis a member of the table.\r\n\r\nOnly tables associated with the current user's memberships are returned.",
+        "description": "Returns a list of poker tables where the currently authenticated user\r\nis a member of the table's lobby.\r\n\r\nOnly tables associated with the current user's lobby memberships are returned.",
         "operationId": "GetMyTables",
         "responses": {
           "200": {
@@ -475,13 +475,13 @@
         }
       }
     },
-    "/api/tables/members/{tableId}/join-token": {
+    "/api/tables/lobby/{tableId}/join-token": {
       "get": {
         "tags": [
           "Tables"
         ],
         "summary": "Get table join token",
-        "description": "Generates a short-lived token that can be shared with other users\r\nto join the table members.",
+        "description": "Generates a short-lived token that can be shared with other users\r\nto join the table's lobby.",
         "parameters": [
           {
             "name": "tableId",
@@ -517,13 +517,13 @@
         }
       }
     },
-    "/api/tables/members/join/{token}": {
+    "/api/tables/lobby/join/{token}": {
       "post": {
         "tags": [
           "Tables"
         ],
-        "summary": "Join to table players",
-        "description": "Adds the authenticated user to a table using a join token.\r\n\r\nIf the user is already a member of the table, no duplicate membership\r\nis created.\r\n\r\nThe join token must be valid and correspond to an existing table.\r\n\r\nOnly 10 users can be joined",
+        "summary": "Join a table lobby",
+        "description": "Adds the authenticated user to a table's lobby using a join token.\r\n\r\nIf the user is already a member of the lobby, no duplicate membership\r\nis created.\r\n\r\nThe join token must be valid and correspond to an existing table.\r\n\r\nOnly 10 users can be joined",
         "parameters": [
           {
             "name": "token",
@@ -561,13 +561,13 @@
         }
       }
     },
-    "/api/tables/members/{tableId}": {
+    "/api/tables/lobby/{tableId}": {
       "get": {
         "tags": [
           "Tables"
         ],
-        "summary": "Get table players",
-        "description": "Returns the users currently in the specified table.\r\n\r\nOnly users who are members of the table can access\r\nthe list of players.",
+        "summary": "Get lobby users",
+        "description": "Returns the users currently in the lobby of the specified table.\r\n\r\nOnly users who are members of the table's lobby can access\r\nthe list of lobby users.",
         "parameters": [
           {
             "name": "tableId",
@@ -587,51 +587,8 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/MemberDto"
+                    "$ref": "#/components/schemas/LobbyUserDto"
                   }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tables/members/{tableId}/members/{removeUserId}": {
-      "delete": {
-        "tags": [
-          "Tables"
-        ],
-        "summary": "Remove a user from a table",
-        "description": "Removes a user from the specified table.\r\n\r\nA table manager can remove any user from the table except themselves.\r\nA regular user can only remove themselves from the table players.\r\n\r\nIf the user has a claimed seat at the table, the seat is released\r\nwhen the user is removed from the table players.\r\n\r\nThe operation requires authentication and the specified table must exist.",
-        "parameters": [
-          {
-            "name": "tableId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "removeUserId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
                 }
               }
             }
@@ -644,7 +601,6 @@
         "tags": [
           "Chips"
         ],
-        "summary": "Get chips",
         "description": "Endpoints managing poker chips.",
         "responses": {
           "200": {
@@ -734,30 +690,12 @@
       },
       "CreateTableRequest": {
         "required": [
-          "tableName",
-          "bigBlindAmount",
-          "smallBlindAmount"
+          "tableName"
         ],
         "type": "object",
         "properties": {
           "tableName": {
             "type": "string"
-          },
-          "bigBlindAmount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "smallBlindAmount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
           }
         }
       },
@@ -864,6 +802,21 @@
           }
         }
       },
+      "LobbyUserDto": {
+        "required": [
+          "id",
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
       "LoginRequest": {
         "required": [
           "username",
@@ -875,21 +828,6 @@
             "type": "string"
           },
           "password": {
-            "type": "string"
-          }
-        }
-      },
-      "MemberDto": {
-        "required": [
-          "id",
-          "username"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "username": {
             "type": "string"
           }
         }
@@ -1062,8 +1000,7 @@
           "id",
           "name",
           "seats",
-          "managerId",
-          "isRunning"
+          "managerId"
         ],
         "type": "object",
         "properties": {
@@ -1082,9 +1019,6 @@
           },
           "managerId": {
             "type": "string"
-          },
-          "isRunning": {
-            "type": "boolean"
           }
         }
       },

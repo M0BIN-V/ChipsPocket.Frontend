@@ -19,9 +19,9 @@
       ],
       "serverEvents": [
         {
-          "name": "MemberJoinedToTableNotification",
-          "description": "Sent when a player joins a table members",
-          "payloadType": "MemberJoinedToTableNotification",
+          "name": "PlayerJoinedToLobbyNotification",
+          "description": "Sent when a player joins a table lobby",
+          "payloadType": "PlayerJoinedToLobbyNotification",
           "payloadSchema": {
             "type": "object",
             "properties": {
@@ -35,9 +35,9 @@
           }
         },
         {
-          "name": "MemberClaimedSeatNotification",
+          "name": "PlayerClaimedSeatNotification",
           "description": "Sent when a player claims a seat.",
-          "payloadType": "MemberClaimedSeatNotification",
+          "payloadType": "PlayerClaimedSeatNotification",
           "payloadSchema": {
             "type": "object",
             "properties": {
@@ -58,9 +58,9 @@
           }
         },
         {
-          "name": "MemberReleasedSeatNotification",
+          "name": "PlayerReleasedSeatNotification",
           "description": "Sent when ap player releases a seat",
-          "payloadType": "MemberReleasedSeatNotification",
+          "payloadType": "PlayerReleasedSeatNotification",
           "payloadSchema": {
             "type": "object",
             "properties": {
