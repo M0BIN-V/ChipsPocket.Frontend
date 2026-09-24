@@ -17,7 +17,10 @@ function getCreateTableError(error: unknown): string {
 export function CreateTablePage() {
   const navigate = useNavigate()
   const [tableName, setTableName] = useState('')
+  const [bigBlindAmount, setBigBlindAmount] = useState('')
+  const [smallBlindAmount, setSmallBlindAmount] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
+  const [blindError, setBlindError] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -34,12 +37,24 @@ export function CreateTablePage() {
       return
     }
 
+    const parsedBigBlind = Number(bigBlindAmount)
+    const parsedSmallBlind = Number(smallBlindAmount)
+    if (!Number.isInteger(parsedBigBlind) || !Number.isInteger(parsedSmallBlind) || parsedBigBlind <= 0 || parsedSmallBlind <= 0) {
+      setBlindError('Enter positive whole-number blind amounts.')
+      return
+    }
+    if (parsedSmallBlind >= parsedBigBlind) {
+      setBlindError('The small blind must be lower than the big blind.')
+      return
+    }
+
     setNameError(null)
+    setBlindError(null)
     setErrorMessage(null)
     setSuccessMessage(null)
     setIsSubmitting(true)
     try {
-      const createdTable = await createTable({ tableName: trimmedName })
+      const createdTable = await createTable({ tableName: trimmedName, bigBlindAmount: parsedBigBlind, smallBlindAmount: parsedSmallBlind })
       const joinToken = await getTableJoinToken(createdTable.id)
       navigate(`/tables/${encodeURIComponent(createdTable.id)}`, { state: { tableName: trimmedName, tableId: createdTable.id, joinToken } })
     } catch (error: unknown) {
@@ -83,7 +98,41 @@ export function CreateTablePage() {
             </div>
           </div>
 
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="form-field">
+              <label htmlFor="small-blind">Small blind</label>
+              <input
+                className="form-input"
+                id="small-blind"
+                name="smallBlindAmount"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="1"
+                value={smallBlindAmount}
+                onChange={(event) => { setSmallBlindAmount(event.target.value); setBlindError(null); setErrorMessage(null) }}
+                disabled={isSubmitting}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="big-blind">Big blind</label>
+              <input
+                className="form-input"
+                id="big-blind"
+                name="bigBlindAmount"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="2"
+                value={bigBlindAmount}
+                onChange={(event) => { setBigBlindAmount(event.target.value); setBlindError(null); setErrorMessage(null) }}
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+
           {nameError && <div className="form-error mt-3" role="alert"><span aria-hidden="true"><AlertTriangle size={16} strokeWidth={2.3} /></span><span>{nameError}</span></div>}
+          {blindError && <div className="form-error mt-3" role="alert"><span aria-hidden="true"><AlertTriangle size={16} strokeWidth={2.3} /></span><span>{blindError}</span></div>}
           {errorMessage && <div className="form-error mt-3" role="alert"><span aria-hidden="true"><AlertTriangle size={16} strokeWidth={2.3} /></span><span>{errorMessage}</span></div>}
           {successMessage && <div className="form-success mt-3" role="status"><span aria-hidden="true"><CheckCircle2 size={16} strokeWidth={2.4} /></span><span>{successMessage}</span></div>}
 

@@ -1,18 +1,18 @@
 import { apiClient } from './client'
-import type { GetJoinTokenResponse, JoinResponse, LobbyUserResponse, TableInfoResponse } from '../features/tables/table.types'
+import type { GetJoinTokenResponse, JoinResponse, MemberResponse, TableInfoResponse } from '../features/tables/table.types'
 
 export async function getTableJoinToken(tableId: string): Promise<string> {
-  const response = await apiClient.get<GetJoinTokenResponse>(`/api/tables/lobby/${encodeURIComponent(tableId)}/join-token`)
+  const response = await apiClient.get<GetJoinTokenResponse>(`/api/tables/members/${encodeURIComponent(tableId)}/join-token`)
   return response.data.token
 }
 
-export async function getTableLobbyUsers(tableId: string): Promise<LobbyUserResponse[]> {
-  const response = await apiClient.get<LobbyUserResponse[]>(`/api/tables/lobby/${encodeURIComponent(tableId)}`)
+export async function getTableMembers(tableId: string): Promise<MemberResponse[]> {
+  const response = await apiClient.get<MemberResponse[]>(`/api/tables/members/${encodeURIComponent(tableId)}`)
   return response.data
 }
 
 export async function joinTableWithToken(token: string): Promise<string> {
-  const response = await apiClient.post<JoinResponse>(`/api/tables/lobby/join/${encodeURIComponent(token)}`)
+  const response = await apiClient.post<JoinResponse>(`/api/tables/members/join/${encodeURIComponent(token)}`)
   return response.data.tableId
 }
 

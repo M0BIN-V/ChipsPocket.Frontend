@@ -6,18 +6,18 @@ import {
 } from '@microsoft/signalr'
 import { authStorage } from '../api/authStorage'
 
-export interface PlayerJoinedToLobbyNotification {
+export interface MemberJoinedToTableNotification {
   userId: string
   username: string
 }
 
-export interface PlayerClaimedSeatNotification {
+export interface MemberClaimedSeatNotification {
   seatId: string
   userId: string
   username: string
 }
 
-export interface PlayerReleasedSeatNotification {
+export interface MemberReleasedSeatNotification {
   seatId: string
   userId?: string
 }
@@ -25,9 +25,9 @@ export interface PlayerReleasedSeatNotification {
 export type TableRealtimeStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error'
 
 export interface TableRealtimeHandlers {
-  onPlayerJoinedToLobby?: (notification: PlayerJoinedToLobbyNotification) => void
-  onPlayerClaimedSeat?: (notification: PlayerClaimedSeatNotification) => void
-  onPlayerReleasedSeat?: (notification: PlayerReleasedSeatNotification) => void
+  onMemberJoinedToTable?: (notification: MemberJoinedToTableNotification) => void
+  onMemberClaimedSeat?: (notification: MemberClaimedSeatNotification) => void
+  onMemberReleasedSeat?: (notification: MemberReleasedSeatNotification) => void
   onStatusChange?: (status: TableRealtimeStatus) => void
   onError?: (message: string) => void
 }
@@ -48,7 +48,7 @@ function asObject(payload: unknown): SignalRObject | null {
   return typeof payload === 'object' && payload !== null ? payload as SignalRObject : null
 }
 
-function parsePlayerJoinedNotification(payload: unknown): PlayerJoinedToLobbyNotification | null {
+function parseMemberJoinedNotification(payload: unknown): MemberJoinedToTableNotification | null {
   const object = asObject(payload)
   if (!object) return null
   const userId = getString(object, 'UserId', 'userId')
@@ -56,7 +56,7 @@ function parsePlayerJoinedNotification(payload: unknown): PlayerJoinedToLobbyNot
   return userId && username ? { userId, username } : null
 }
 
-function parsePlayerClaimedSeatNotification(payload: unknown): PlayerClaimedSeatNotification | null {
+function parseMemberClaimedSeatNotification(payload: unknown): MemberClaimedSeatNotification | null {
   const object = asObject(payload)
   if (!object) return null
   const seatId = getString(object, 'SeatId', 'seatId')
@@ -65,7 +65,7 @@ function parsePlayerClaimedSeatNotification(payload: unknown): PlayerClaimedSeat
   return seatId && userId && username ? { seatId, userId, username } : null
 }
 
-function parsePlayerReleasedSeatNotification(payload: unknown): PlayerReleasedSeatNotification | null {
+function parseMemberReleasedSeatNotification(payload: unknown): MemberReleasedSeatNotification | null {
   const object = asObject(payload)
   if (!object) return null
   const seatId = getString(object, 'SeatId', 'seatId')
@@ -143,22 +143,22 @@ export class TableRealtimeService {
   }
 
   private registerHandlers(connection: HubConnection, tableId: string, operationId: number): void {
-    connection.on('PlayerJoinedToLobbyNotification', (payload: unknown) => {
-      console.log('[SignalR] Event received: PlayerJoinedToLobbyNotification', payload)
-      const notification = parsePlayerJoinedNotification(payload)
-      if (notification && this.isCurrent(connection, tableId, operationId)) this.handlers?.onPlayerJoinedToLobby?.(notification)
+    connection.on('MemberJoinedToTableNotification', (payload: unknown) => {
+      console.log('[SignalR] Event received: MemberJoinedToTableNotification', payload)
+      const notification = parseMemberJoinedNotification(payload)
+      if (notification && this.isCurrent(connection, tableId, operationId)) this.handlers?.onMemberJoinedToTable?.(notification)
     })
 
-    connection.on('PlayerClaimedSeatNotification', (payload: unknown) => {
-      console.log('[SignalR] Event received: PlayerClaimedSeatNotification', payload)
-      const notification = parsePlayerClaimedSeatNotification(payload)
-      if (notification && this.isCurrent(connection, tableId, operationId)) this.handlers?.onPlayerClaimedSeat?.(notification)
+    connection.on('MemberClaimedSeatNotification', (payload: unknown) => {
+      console.log('[SignalR] Event received: MemberClaimedSeatNotification', payload)
+      const notification = parseMemberClaimedSeatNotification(payload)
+      if (notification && this.isCurrent(connection, tableId, operationId)) this.handlers?.onMemberClaimedSeat?.(notification)
     })
 
-    connection.on('PlayerReleasedSeatNotification', (payload: unknown) => {
-      console.log('[SignalR] Event received: PlayerReleasedSeatNotification', payload)
-      const notification = parsePlayerReleasedSeatNotification(payload)
-      if (notification && this.isCurrent(connection, tableId, operationId)) this.handlers?.onPlayerReleasedSeat?.(notification)
+    connection.on('MemberReleasedSeatNotification', (payload: unknown) => {
+      console.log('[SignalR] Event received: MemberReleasedSeatNotification', payload)
+      const notification = parseMemberReleasedSeatNotification(payload)
+      if (notification && this.isCurrent(connection, tableId, operationId)) this.handlers?.onMemberReleasedSeat?.(notification)
     })
 
     connection.onreconnecting((error) => {
@@ -202,9 +202,9 @@ export class TableRealtimeService {
 
   private async stopConnection(connection: HubConnection | null): Promise<void> {
     if (!connection) return
-    connection.off('PlayerJoinedToLobbyNotification')
-    connection.off('PlayerClaimedSeatNotification')
-    connection.off('PlayerReleasedSeatNotification')
+    connection.off('MemberJoinedToTableNotification')
+    connection.off('MemberClaimedSeatNotification')
+    connection.off('MemberReleasedSeatNotification')
     if (connection.state !== HubConnectionState.Disconnected) await connection.stop().catch(() => {})
   }
 }

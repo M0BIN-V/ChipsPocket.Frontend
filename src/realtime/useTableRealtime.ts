@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   TableRealtimeService,
-  type PlayerClaimedSeatNotification,
-  type PlayerJoinedToLobbyNotification,
-  type PlayerReleasedSeatNotification,
+  type MemberClaimedSeatNotification,
+  type MemberJoinedToTableNotification,
+  type MemberReleasedSeatNotification,
   type TableRealtimeStatus,
 } from './tableRealtimeService'
 
 export interface UseTableRealtimeHandlers {
-  onPlayerJoinedToLobby?: (notification: PlayerJoinedToLobbyNotification) => void
-  onPlayerClaimedSeat?: (notification: PlayerClaimedSeatNotification) => void
-  onPlayerReleasedSeat?: (notification: PlayerReleasedSeatNotification) => void
+  onMemberJoinedToTable?: (notification: MemberJoinedToTableNotification) => void
+  onMemberClaimedSeat?: (notification: MemberClaimedSeatNotification) => void
+  onMemberReleasedSeat?: (notification: MemberReleasedSeatNotification) => void
 }
 
 export function useTableRealtime(tableId: string | undefined, handlers: UseTableRealtimeHandlers) {
@@ -31,14 +31,14 @@ export function useTableRealtime(tableId: string | undefined, handlers: UseTable
     }
 
     void service.start(tableId, {
-      onPlayerJoinedToLobby: (notification) => {
-        if (isMounted) handlersRef.current.onPlayerJoinedToLobby?.(notification)
+      onMemberJoinedToTable: (notification) => {
+        if (isMounted) handlersRef.current.onMemberJoinedToTable?.(notification)
       },
-      onPlayerClaimedSeat: (notification) => {
-        if (isMounted) handlersRef.current.onPlayerClaimedSeat?.(notification)
+      onMemberClaimedSeat: (notification) => {
+        if (isMounted) handlersRef.current.onMemberClaimedSeat?.(notification)
       },
-      onPlayerReleasedSeat: (notification) => {
-        if (isMounted) handlersRef.current.onPlayerReleasedSeat?.(notification)
+      onMemberReleasedSeat: (notification) => {
+        if (isMounted) handlersRef.current.onMemberReleasedSeat?.(notification)
       },
       onStatusChange: (nextStatus) => {
         if (isMounted) {

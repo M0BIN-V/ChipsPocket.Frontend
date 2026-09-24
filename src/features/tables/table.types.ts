@@ -38,10 +38,14 @@ export interface UserStackResponse {
 
 export interface CreateTableForm {
   tableName: string
+  bigBlindAmount: string
+  smallBlindAmount: string
 }
 
 export interface CreateTableRequest {
   tableName: string
+  bigBlindAmount: number
+  smallBlindAmount: number
 }
 
 export interface CreateTableResponse {
@@ -58,7 +62,7 @@ export interface GetMyTablesResponse {
   createdAt: string
 }
 
-export interface LobbyUserResponse {
+export interface MemberResponse {
   id: string
   username: string
 }
@@ -76,6 +80,7 @@ export interface TableSeatInfo {
 export interface TableInfoResponse {
   id: string
   name: string
-  managerId?: string
+  managerId: string
+  isRunning: boolean
   seats: TableSeatInfo[]
 }

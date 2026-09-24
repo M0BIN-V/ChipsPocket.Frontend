@@ -4,9 +4,10 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { AlertTriangle, ArrowLeft, Club, Crown, Diamond, Heart, LoaderCircle, Plus, Share2, Spade, Users, X } from 'lucide-react'
 import { getMe } from '../../api/auth'
-import { claimTableSeat, getTableInfo, getTableJoinToken, getTableLobbyUsers, releaseTableSeat } from '../../api/tableLobby'
+import { getUserStack } from '../../api/buyIn'
+import { claimTableSeat, getTableInfo, getTableJoinToken, getTableMembers, releaseTableSeat } from '../../api/tableLobby'
 import { useTableRealtime } from '../../realtime/useTableRealtime'
-import type { LobbyUserResponse, TableInfoResponse, TableSeatInfo } from './table.types'
+import type { MemberResponse, TableInfoResponse, TableSeatInfo } from './table.types'
 import { getPlayerInitials, seatPositions } from './tableSeatLayout'
 import { buildTableJoinUrl } from './tableShare'
 import { PlayerDetailsModal } from './PlayerDetailsModal'
@@ -34,7 +35,8 @@ export function TablePage() {
   const [isShareLoading, setIsShareLoading] = useState(false)
   const [shareError, setShareError] = useState<string | null>(null)
   const [isLobbyOpen, setIsLobbyOpen] = useState(false)
-  const [lobbyUsers, setLobbyUsers] = useState<LobbyUserResponse[]>([])
+  const [lobbyUsers, setLobbyUsers] = useState<MemberResponse[]>([])
+  const [memberBalances, setMemberBalances] = useState<Record<string, number>>({})
   const [isLobbyLoading, setIsLobbyLoading] = useState(false)
   const [lobbyError, setLobbyError] = useState<string | null>(null)
   const [selectedPlayer, setSelectedPlayer] = useState<{ id?: string; username: string } | null>(null)
@@ -44,12 +46,18 @@ export function TablePage() {
   const tableLoadError = tableError ?? (!tableId ? 'Table information is unavailable.' : null)
   const isManager = Boolean(currentUserId && tableInfo?.managerId && currentUserId === tableInfo.managerId)
   const { status: realtimeStatus, error: realtimeError } = useTableRealtime(tableId, {
-    onPlayerJoinedToLobby: (notification) => {
-      setLobbyUsers((currentUsers) => currentUsers.some((user) => user.id === notification.userId)
+    onMemberJoinedToTable: (notification) => {
+      const member = { id: notification.userId, username: notification.username }
+      setLobbyUsers((currentUsers) => currentUsers.some((user) => user.id === member.id)
         ? currentUsers
-        : [...currentUsers, { id: notification.userId, username: notification.username }])
+        : [...currentUsers, member])
+      if (tableId) {
+        void getUserStack(tableId, member.id).then((stack) => {
+          setMemberBalances((currentBalances) => ({ ...currentBalances, [member.id]: stack.totalValue }))
+        }).catch(() => {})
+      }
     },
-    onPlayerClaimedSeat: (notification) => {
+    onMemberClaimedSeat: (notification) => {
       setTableInfo((currentTable) => {
         if (!currentTable) return currentTable
 
@@ -68,7 +76,7 @@ export function TablePage() {
         }
       })
     },
-    onPlayerReleasedSeat: (notification) => {
+    onMemberReleasedSeat: (notification) => {
       setTableInfo((currentTable) => currentTable && {
         ...currentTable,
         seats: currentTable.seats.map((seat) => {
@@ -161,10 +169,15 @@ export function TablePage() {
     setIsLobbyOpen(true)
     setIsLobbyLoading(true)
     setLobbyError(null)
-    getTableLobbyUsers(tableId).then((users) => {
+    getTableMembers(tableId).then(async (users) => {
       setLobbyUsers(users)
+      const balanceResults = await Promise.allSettled(users.map(async (user) => [user.id, (await getUserStack(tableId, user.id)).totalValue] as const))
+      const balances = Object.fromEntries(balanceResults
+        .filter((result): result is PromiseFulfilledResult<readonly [string, number]> => result.status === 'fulfilled')
+        .map((result) => result.value))
+      setMemberBalances(balances)
     }).catch(() => {
-      setLobbyError('We could not load the lobby users. Please try again.')
+      setLobbyError('We could not load the lobby users.')
     }).finally(() => {
       setIsLobbyLoading(false)
     })
@@ -177,8 +190,13 @@ export function TablePage() {
     }
 
     try {
-      const users = await getTableLobbyUsers(tableId ?? '')
+      const users = await getTableMembers(tableId ?? '')
       setLobbyUsers(users)
+      const balanceResults = await Promise.allSettled(users.map(async (user) => [user.id, (await getUserStack(tableId ?? '', user.id)).totalValue] as const))
+      const balances = Object.fromEntries(balanceResults
+        .filter((result): result is PromiseFulfilledResult<readonly [string, number]> => result.status === 'fulfilled')
+        .map((result) => result.value))
+      setMemberBalances(balances)
       setSelectedPlayer({ ...player, id: users.find((user) => user.username === player.username)?.id })
     } catch {
       setSelectedPlayer(player)
@@ -390,7 +408,7 @@ export function TablePage() {
                       <button className="flex w-full items-center justify-between gap-3 rounded-2xl bg-[#111311] px-3 py-3 text-left transition hover:bg-[#1a2019]" type="button" onClick={() => { void handlePlayerSelect(user) }}>
                         <span className="flex min-w-0 items-center gap-3">
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#b7d334]/15 text-sm font-semibold text-[#d9ed7a]" aria-hidden="true">{getPlayerInitials(user.username)}</span>
-                          <span className="truncate text-sm font-medium">{user.username}</span>
+                          <span className="flex min-w-0 items-baseline gap-2 truncate text-sm font-medium"><span className="truncate">{user.username}</span><strong className="shrink-0 text-[#d9ed7a]">{memberBalances[user.id] === undefined ? '...' : `$${memberBalances[user.id].toLocaleString()}`}</strong></span>
                         </span>
                         {user.id === tableInfo?.managerId && <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#b7d334]/35 bg-[#b7d334]/10 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-[#d9ed7a]"><Crown size={12} strokeWidth={2.3} />Manager</span>}
                       </button>
