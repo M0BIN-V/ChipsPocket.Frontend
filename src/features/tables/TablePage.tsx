@@ -297,8 +297,9 @@ export function TablePage() {
     setHandError(null)
     setIsStartingHand(true)
     try {
-      await createHand(tableId)
+      const createdHand = await createHand(tableId)
       setTableInfo((currentTable) => currentTable ? { ...currentTable, isRunning: true } : currentTable)
+      navigate(`/tables/${encodeURIComponent(tableId)}/hands/${encodeURIComponent(createdHand.handId)}`)
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response?.status === 400) {
         setHandError('The hand cannot start until every player has a seat.')

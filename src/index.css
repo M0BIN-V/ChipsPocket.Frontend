@@ -272,6 +272,184 @@ img, video, svg { display: block; max-width: 100%; }
   gap: 20px;
 }
 
+.active-hand-shell {
+  display: flex;
+  width: min(100%, 920px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 18px 14px max(20px, env(safe-area-inset-bottom));
+  flex-direction: column;
+}
+
+.active-hand-header {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+}
+
+.active-hand-header h1,
+.players-panel h2 {
+  margin: 0;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.25rem;
+  letter-spacing: -0.04em;
+}
+
+.active-hand-kicker {
+  margin: 0 0 3px;
+  color: var(--text-muted);
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.players-button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 7px;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(167, 181, 150, 0.18);
+  border-radius: 14px;
+  background: rgba(17, 19, 17, 0.72);
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.active-table {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  min-height: min(74vh, 690px);
+  margin: 14px auto 12px;
+  overflow: hidden;
+  border: 10px solid #1f2a22;
+  border-radius: 42% / 19%;
+  background: radial-gradient(ellipse at 50% 38%, #355842 0%, #224732 54%, #182f27 100%);
+  box-shadow: inset 0 0 0 2px rgba(174, 192, 127, 0.55), inset 0 12px 20px rgba(6, 16, 11, 0.46), 0 18px 30px rgba(0, 0, 0, 0.28);
+  touch-action: pan-y;
+}
+
+.pot-drop-zone {
+  position: absolute;
+  top: 13%;
+  left: 50%;
+  z-index: 2;
+  width: min(66%, 310px);
+  height: 27%;
+  min-height: 150px;
+  transform: translateX(-50%);
+  border: 1px dashed rgba(217, 237, 122, 0.38);
+  border-radius: 18px;
+  background: rgba(8, 25, 17, 0.12);
+  text-align: center;
+}
+
+.pot-value {
+  position: absolute;
+  top: 5%;
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.pot-value span {
+  color: rgba(210, 222, 185, 0.74);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.pot-value strong {
+  color: #f6f7e9;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(1.25rem, 5vw, 1.9rem);
+}
+
+.pot-drop-zone > span,
+.player-stack-label span {
+  display: block;
+  color: rgba(210, 222, 185, 0.74);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.pot-drop-zone > span { margin-top: 15px; }
+.pot-drop-zone > strong { display: block; margin-top: 4px; color: #f6f7e9; font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.25rem, 5vw, 1.9rem); }
+.pot-drop-active { border-color: var(--chip-strong); background: rgba(183, 211, 52, 0.12); }
+.pot-chips, .player-chips { position: absolute; inset: 0; }
+.player-chips { z-index: 1; }
+
+.table-watermark {
+  position: absolute;
+  top: 52%;
+  left: 50%;
+  color: rgba(190, 206, 155, 0.26);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(0.58rem, 1.5vw, 0.76rem);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.table-watermark span { margin-left: 0.6rem; letter-spacing: 0.18em; }
+.player-stack-label { position: absolute; bottom: 9%; left: 50%; z-index: 0; pointer-events: none; text-align: center; transform: translateX(-50%); }
+.player-stack-label strong { display: block; margin-top: 3px; color: rgba(246, 247, 233, 0.9); font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; }
+.table-instruction { position: absolute; right: 0; bottom: 4%; left: 0; color: rgba(190, 206, 155, 0.68); font-size: 0.68rem; text-align: center; }
+
+.chip-stack {
+  position: absolute;
+  width: 4.9rem;
+  height: 8.2rem;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  touch-action: none;
+  transition: filter 150ms ease;
+}
+
+.chip-stack:active { cursor: grabbing; }
+.chip-stack-dragging { z-index: 20; filter: drop-shadow(0 15px 11px rgba(0, 0, 0, 0.42)); }
+.poker-chip { position: absolute; left: 50%; display: flex; width: 4.25rem; height: 4.25rem; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: transparent; transform: translateX(-50%); box-shadow: none; touch-action: none; }
+.poker-chip img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.38)); }
+.chip-top { z-index: 4; cursor: grab; }
+.dragged-chip { position: absolute; z-index: 30; transform: translate(-50%, -50%); cursor: grabbing; pointer-events: none; filter: drop-shadow(0 15px 11px rgba(0, 0, 0, 0.42)); }
+
+.action-dock { width: min(100%, 560px); margin: auto auto 0; }
+.action-button { min-height: 58px; border-radius: 18px; font-family: 'Space Grotesk', sans-serif; font-size: 1rem; letter-spacing: 0.08em; }
+.waiting-message, .submit-error { margin: 0 0 9px; color: var(--text-soft); font-size: 0.82rem; text-align: center; }
+.submit-error { color: var(--error); }
+.active-hand-loading { display: grid; min-height: 100vh; place-items: center; color: var(--chip-strong); }
+.players-panel { width: min(calc(100% - 28px), 450px); max-height: min(80vh, 620px); margin: auto; overflow: auto; padding: 20px; border: 1px solid var(--border); border-radius: 26px; background: #141b16; box-shadow: var(--shadow); }
+.players-list { display: grid; gap: 9px; margin-top: 20px; }
+.hand-player { display: flex; min-height: 70px; align-items: center; justify-content: space-between; gap: 15px; padding: 12px 14px; border: 1px solid rgba(167, 181, 150, 0.12); border-radius: 15px; background: rgba(8, 12, 9, 0.55); }
+.hand-player strong, .hand-player span { display: block; }
+.hand-player strong { color: var(--text); }
+.hand-player span { margin-top: 4px; color: var(--text-muted); font-size: 0.72rem; }
+.hand-player b { color: var(--chip-strong); font-family: 'Space Grotesk', sans-serif; white-space: nowrap; }
+
+@media (max-width: 520px) {
+  .active-hand-shell { padding-inline: 10px; }
+  .active-table { min-height: 72vh; border-width: 7px; border-radius: 36% / 14%; }
+  .pot-drop-zone { width: 75%; height: 28%; }
+  .chip-stack { transform: translate(-50%, -45%) scale(0.84); }
+  .table-instruction { font-size: 0.61rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip-stack, .primary-button, .icon-button { transition: none; }
+}
+
 @media (min-width: 768px) {
   .app-shell { padding-top: 32px; }
   .mobile-shell { width: min(100%, 520px); }

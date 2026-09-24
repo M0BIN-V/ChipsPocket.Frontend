@@ -8,6 +8,7 @@ import { HomePage } from '../features/tables/HomePage'
 import { CreateTablePage } from '../features/tables/CreateTablePage'
 import { JoinTablePage } from '../features/tables/JoinTablePage'
 import { TablePage } from '../features/tables/TablePage'
+import { ActiveHandPage } from '../features/tables/ActiveHandPage'
 
 function AuthenticatedRoute() {
     return authStorage.getAccessToken() ? <HomePage /> : <Navigate to="/login" replace />
@@ -19,6 +20,10 @@ function CreateTableRoute() {
 
 function TableRoute() {
     return authStorage.getAccessToken() ? <TablePage /> : <Navigate to="/login" replace />
+}
+
+function ActiveHandRoute() {
+    return authStorage.getAccessToken() ? <ActiveHandPage /> : <Navigate to="/login" replace />
 }
 
 function JoinRoute() {
@@ -49,6 +54,7 @@ export function AppRoutes() {
             <Route path="/join" element={<JoinRoute />} />
             <Route path="/join/:token" element={<JoinRoute />} />
             <Route path="/tables/:tableId" element={<TableRoute />} />
+            <Route path="/tables/:tableId/hands/:handId" element={<ActiveHandRoute />} />
             <Route path="/table/:tableId" element={<TableAliasRoute />} />
             <Route path="/table/lobby" element={<JoinedLobbyRoute />} />
             <Route path="*" element={<Navigate to="/" replace />} />
