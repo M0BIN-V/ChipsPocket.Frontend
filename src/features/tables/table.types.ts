@@ -84,3 +84,10 @@ export interface TableInfoResponse {
   isRunning: boolean
   seats: TableSeatInfo[]
 }
+
+export interface CreateHandResponse {
+  handId: string
+  dealerSeatId: string
+  bigBlindSeatId: string
+  smallBlindSeatId: string
+}

@@ -639,6 +639,57 @@
         }
       }
     },
+    "/api/tables/{tableId}/hands": {
+      "post": {
+        "tags": [
+          "hands"
+        ],
+        "description": "Endpoints for creating and managing poker hands",
+        "parameters": [
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewCreateHandDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chips/chips": {
       "get": {
         "tags": [
@@ -1025,6 +1076,33 @@
           }
         }
       },
+      "ViewCreateHandDto": {
+        "required": [
+          "handId",
+          "dealerSeatId",
+          "bigBlindSeatId",
+          "smallBlindSeatId"
+        ],
+        "type": "object",
+        "properties": {
+          "handId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dealerSeatId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bigBlindSeatId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "smallBlindSeatId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "ViewSeatDto": {
         "required": [
           "id",
@@ -1121,6 +1199,9 @@
     },
     {
       "name": "User Stack"
+    },
+    {
+      "name": "hands"
     },
     {
       "name": "Chips"

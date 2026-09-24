@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { AlertTriangle, ArrowLeft, Club, Crown, Diamond, Heart, LoaderCircle, Plus, Share2, Spade, Users, X } from 'lucide-react'
 import { getMe } from '../../api/auth'
 import { getUserStack } from '../../api/buyIn'
+import { createHand } from '../../api/hands'
 import { claimTableSeat, getTableInfo, getTableJoinToken, getTableMembers, releaseTableSeat } from '../../api/tableLobby'
 import { useTableRealtime } from '../../realtime/useTableRealtime'
 import type { MemberResponse, TableInfoResponse, TableSeatInfo } from './table.types'
@@ -28,6 +29,8 @@ export function TablePage() {
   const [tableInfo, setTableInfo] = useState<TableInfoResponse | null>(null)
   const [isTableLoading, setIsTableLoading] = useState(true)
   const [tableError, setTableError] = useState<string | null>(null)
+  const [isStartingHand, setIsStartingHand] = useState(false)
+  const [handError, setHandError] = useState<string | null>(null)
   const [seatActionId, setSeatActionId] = useState<string | null>(null)
   const [seatActionError, setSeatActionError] = useState<string | null>(null)
   const [isShareOpen, setIsShareOpen] = useState(false)
@@ -37,6 +40,8 @@ export function TablePage() {
   const [isLobbyOpen, setIsLobbyOpen] = useState(false)
   const [lobbyUsers, setLobbyUsers] = useState<MemberResponse[]>([])
   const [memberBalances, setMemberBalances] = useState<Record<string, number>>({})
+  const [isMembersLoading, setIsMembersLoading] = useState(false)
+  const [membersError, setMembersError] = useState<string | null>(null)
   const [isLobbyLoading, setIsLobbyLoading] = useState(false)
   const [lobbyError, setLobbyError] = useState<string | null>(null)
   const [selectedPlayer, setSelectedPlayer] = useState<{ id?: string; username: string } | null>(null)
@@ -45,6 +50,21 @@ export function TablePage() {
   const joinUrl = joinToken ? buildTableJoinUrl(joinToken) : null
   const tableLoadError = tableError ?? (!tableId ? 'Table information is unavailable.' : null)
   const isManager = Boolean(currentUserId && tableInfo?.managerId && currentUserId === tableInfo.managerId)
+  const allMembersSeated = lobbyUsers.length > 0 && lobbyUsers.every((member) => tableInfo?.seats.some((seat) => seat.user?.id === member.id || seat.user?.username === member.username))
+
+  const loadMembers = useCallback(async () => {
+    if (!tableId) return
+    setIsMembersLoading(true)
+    setMembersError(null)
+    try {
+      setLobbyUsers(await getTableMembers(tableId))
+    } catch {
+      setMembersError('Unable to load the current players.')
+    } finally {
+      setIsMembersLoading(false)
+    }
+  }, [tableId])
+
   const { status: realtimeStatus, error: realtimeError } = useTableRealtime(tableId, {
     onMemberJoinedToTable: (notification) => {
       const member = { id: notification.userId, username: notification.username }
@@ -56,6 +76,7 @@ export function TablePage() {
           setMemberBalances((currentBalances) => ({ ...currentBalances, [member.id]: stack.totalValue }))
         }).catch(() => {})
       }
+      void loadMembers()
     },
     onMemberClaimedSeat: (notification) => {
       setTableInfo((currentTable) => {
@@ -75,6 +96,7 @@ export function TablePage() {
           }),
         }
       })
+      void loadMembers()
     },
     onMemberReleasedSeat: (notification) => {
       setTableInfo((currentTable) => currentTable && {
@@ -85,8 +107,13 @@ export function TablePage() {
           return isReleasedSeat || isReleasedPlayerDuplicate ? { ...seat, user: null } : seat
         }),
       })
+      void loadMembers()
     },
   })
+
+  useEffect(() => {
+    void loadMembers()
+  }, [loadMembers])
 
   const loadTableInfo = useCallback(async () => {
     if (!tableId) {
@@ -264,6 +291,27 @@ export function TablePage() {
     }
   }
 
+  async function handleStartHand() {
+    if (!tableId || !isManager || !allMembersSeated || isStartingHand || tableInfo?.isRunning) return
+
+    setHandError(null)
+    setIsStartingHand(true)
+    try {
+      await createHand(tableId)
+      setTableInfo((currentTable) => currentTable ? { ...currentTable, isRunning: true } : currentTable)
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response?.status === 400) {
+        setHandError('The hand cannot start until every player has a seat.')
+      } else if (axios.isAxiosError(error) && error.response?.status === 404) {
+        setHandError('This table is no longer available.')
+      } else {
+        setHandError('Unable to start the hand. Please try again.')
+      }
+    } finally {
+      setIsStartingHand(false)
+    }
+  }
+
   const seatsByOrder = new Map(tableInfo?.seats.map((seat) => [seat.order, seat]) ?? [])
   const currentUserSeat = tableInfo?.seats.find((seat) => seat.user?.username === currentUserName)
   const occupiedSeats = tableInfo?.seats.filter((seat) => seat.user).length ?? 0
@@ -360,6 +408,25 @@ export function TablePage() {
                 <span className="flex items-center gap-2"><i className="legend-dot legend-dot-open" aria-hidden="true" />Open</span>
                 <span className="flex items-center gap-2"><i className="legend-dot legend-dot-taken" aria-hidden="true" />Occupied</span>
                 <span className="flex items-center gap-2"><i className="legend-dot legend-dot-yours" aria-hidden="true" />Your seat</span>
+              </div>
+
+              <div className="mx-auto mt-8 max-w-md text-center">
+                {!tableInfo.isRunning && isManager && (
+                  <>
+                    {allMembersSeated && <button className="primary-button w-full" type="button" onClick={() => { void handleStartHand() }} disabled={isStartingHand}>
+                      {isStartingHand && <LoaderCircle size={18} strokeWidth={2.3} className="animate-spin" />}
+                      <span>{isStartingHand ? 'Starting hand...' : 'Start Hand'}</span>
+                    </button>}
+                    <p className="mt-3 text-sm text-[#a5aaa1]" role="status">
+                      {membersError ?? (isMembersLoading ? 'Loading players...' : allMembersSeated ? 'Everyone has chosen a seat.' : 'Waiting for all players to choose a seat.')}
+                    </p>
+                  </>
+                )}
+                {!tableInfo.isRunning && !isManager && (
+                  <p className="text-sm leading-6 text-[#a5aaa1]" role="status">Waiting for all players to choose their seats. The table manager will start the hand when everyone is ready.</p>
+                )}
+                {tableInfo.isRunning && <p className="text-sm font-medium text-[#d9ed7a]" role="status">Hand in progress.</p>}
+                {handError && <p className="form-error mt-3 text-left" role="alert"><span aria-hidden="true"><AlertTriangle size={16} strokeWidth={2.3} /></span><span>{handError}</span></p>}
               </div>
             </>
           )}
