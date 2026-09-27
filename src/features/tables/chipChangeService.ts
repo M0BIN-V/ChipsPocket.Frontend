@@ -1,4 +1,5 @@
 import type { Chip, HandState } from './hand.types'
+import type { ChipAppearance } from './table.types'
 
 export interface ChipChangeService {
   change(hand: HandState, sourceChipIds: string | string[], replacements: Chip[]): HandState
@@ -14,6 +15,52 @@ export function canAddReplacementChip(sourceValue: number, selectedValue: number
 
 export function canConfirmChipChange(sourceValue: number, selectedValue: number): boolean {
   return sourceValue > 0 && selectedValue === sourceValue
+}
+
+export function getAutoFillReplacementCounts(
+  sourceValue: number,
+  selectedValue: number,
+  denominations: readonly Pick<ChipAppearance, 'id' | 'value'>[],
+): Record<string, number> | null {
+  const remainingValue = sourceValue - selectedValue
+  if (!Number.isSafeInteger(remainingValue) || remainingValue < 0) return null
+  if (remainingValue === 0) return {}
+
+  const available = denominations
+    .filter((denomination) => Number.isSafeInteger(denomination.value) && denomination.value > 0)
+    .sort((first, second) => second.value - first.value || first.id.localeCompare(second.id))
+  const bestCounts: (number[] | undefined)[] = Array.from({ length: remainingValue + 1 })
+  bestCounts[0] = Array.from({ length: available.length }, () => 0)
+
+  function chipCount(counts: number[]) {
+    return counts.reduce((total, count) => total + count, 0)
+  }
+
+  function isBetter(candidate: number[], current: number[] | undefined) {
+    if (!current) return true
+    const candidateTotal = chipCount(candidate)
+    const currentTotal = chipCount(current)
+    if (candidateTotal !== currentTotal) return candidateTotal < currentTotal
+    for (let index = 0; index < candidate.length; index += 1) {
+      if (candidate[index] !== current[index]) return candidate[index] > current[index]
+    }
+    return false
+  }
+
+  for (let total = 1; total <= remainingValue; total += 1) {
+    for (let index = 0; index < available.length; index += 1) {
+      const denominationValue = available[index].value
+      const previous = bestCounts[total - denominationValue]
+      if (!previous) continue
+      const candidate = [...previous]
+      candidate[index] += 1
+      if (isBetter(candidate, bestCounts[total])) bestCounts[total] = candidate
+    }
+  }
+
+  const counts = bestCounts[remainingValue]
+  if (!counts) return null
+  return Object.fromEntries(available.flatMap((denomination, index) => counts[index] > 0 ? [[denomination.id, counts[index]]] : []))
 }
 
 export const mockChipChangeService: ChipChangeService = {

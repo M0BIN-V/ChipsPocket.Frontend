@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, LoaderCircle, Minus, Plus, Undo2, Users, X } from 'lucide-react'
+import { ArrowLeft, LoaderCircle, Minus, Plus, Sparkles, Undo2, Users, X } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getMe } from '../../api/auth'
 import { getUserStack } from '../../api/buyIn'
 import { mockHandService } from '../../api/handService'
 import { chipAppearanceService } from './chipAppearanceService'
-import { canAddReplacementChip, canConfirmChipChange, getChipValueTotal, mockChipChangeService } from './chipChangeService'
+import { canAddReplacementChip, canConfirmChipChange, getAutoFillReplacementCounts, getChipValueTotal, mockChipChangeService } from './chipChangeService'
 import { getAvailableAction } from './handAction'
 import type { Chip, ChipColor, ChipStack, HandPlayer, HandState } from './hand.types'
 import type { ChipAppearance, UserStackResponse } from './table.types'
@@ -122,6 +123,20 @@ export function ActiveHandPage() {
   }, [])
 
   useEffect(() => {
+    if (chipMenu?.mode !== 'change') return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setChipMenu(null)
+    }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [chipMenu?.mode])
+
+  useEffect(() => {
     if (!handId || !tableId) return
     let mounted = true
     void mockHandService.getHandState(handId, tableId).then(async (state) => {
@@ -193,6 +208,18 @@ export function ActiveHandPage() {
     : []
   const selectedTotal = chipAppearances.reduce((total, appearance) => total + appearance.value * (selectedDenominations[appearance.id] ?? 0), 0)
   const remainingValue = sourceTotal - selectedTotal
+  const autoFillCounts = getAutoFillReplacementCounts(sourceTotal, selectedTotal, menuAppearances)
+
+  function autoFillRemainingValue() {
+    if (!autoFillCounts) return
+    setSelectedDenominations((current) => {
+      const next = { ...current }
+      Object.entries(autoFillCounts).forEach(([denominationId, count]) => {
+        next[denominationId] = (next[denominationId] ?? 0) + count
+      })
+      return next
+    })
+  }
 
   function toPosition(clientX: number, clientY: number) {
     const rect = boardRef.current?.getBoundingClientRect()
@@ -478,6 +505,7 @@ export function ActiveHandPage() {
             aria-label={`${money(chip.value)} ${chip.color} chip`}
           ><img src={chip.picture ?? `/${chip.color}-chip.png`} alt={`${chip.value} chip`} draggable={false} /></button>
         ))}
+        {chips.length > 1 && <span className="chip-stack-value">{money(chips.reduce((total, chip) => total + chip.value, 0))}</span>}
       </div>
     )
   })
@@ -516,14 +544,13 @@ export function ActiveHandPage() {
         <div className="table-watermark">CHIPSPOCKET <span>♠ ♣ ♥ ♦</span></div>
         <div className="player-stack-label"><span>YOUR STACK</span><strong>{money(hand.myRemainingStack - selectedAmount)}</strong></div>
         <div className="player-chips">{renderStacks(hand.myStack, 'player')}</div>
-        {chipMenu && menuChips.length > 0 && <div
-          className={`chip-change-menu ${chipMenu.mode === 'change' ? 'chip-change-panel' : 'chip-context-menu'}`}
+        {chipMenu?.mode === 'actions' && menuChips.length > 0 && <div
+          className="chip-change-menu chip-context-menu"
           data-chip-change-menu
-          role={chipMenu.mode === 'change' ? 'dialog' : 'menu'}
-          aria-label={chipMenu.mode === 'change' ? 'Change chip' : 'Chip actions'}
+          role="menu"
+          aria-label="Chip actions"
           style={{ left: chipMenu.left, top: chipMenu.top }}
         >
-          {chipMenu.mode === 'actions' ? <>
             <button className="chip-menu-action" type="button" role="menuitem" onClick={() => {
               setSelectedDenominations({})
               setChipMenu({ ...chipMenu, mode: 'change' })
@@ -536,7 +563,13 @@ export function ActiveHandPage() {
               setSelectedDenominations({})
               setChipMenu({ ...chipMenu, sourceChipIds: [chipMenu.selectedChipId], mode: 'change' })
             }}>Change chip</button>}
-          </> : <>
+        </div>}
+        {chipMenu?.mode === 'change' && menuChips.length > 0 && createPortal(<div
+          className="chip-change-modal-backdrop"
+          data-chip-change-menu
+          onPointerDown={(event) => { if (event.target === event.currentTarget) setChipMenu(null) }}
+        >
+          <section className="chip-change-menu chip-change-panel" role="dialog" aria-modal="true" aria-label="Change chips">
             <div className="chip-change-heading">
               <div><p className="active-hand-kicker">CHIP CHANGE</p><h2>{menuChips.length > 1 ? 'Change chips' : 'Make change'}</h2></div>
               <button className="icon-button" type="button" onClick={() => setChipMenu(null)} aria-label="Close chip change"><X size={17} /></button>
@@ -553,6 +586,12 @@ export function ActiveHandPage() {
             <div className="chip-change-totals" aria-live="polite">
               <span>Selected <strong>{money(selectedTotal)}</strong></span>
               <span>Remaining <strong>{money(remainingValue)}</strong></span>
+            </div>
+            <div className="chip-change-auto-fill-row">
+              <span>Complete remaining value</span>
+              <button className="chip-change-auto-fill-button" type="button" disabled={remainingValue <= 0 || autoFillCounts === null} onClick={autoFillRemainingValue}>
+                <Sparkles size={15} /> Auto fill
+              </button>
             </div>
             <div className="chip-change-denominations" aria-label="Available denominations">
               {chipAppearancesError ? <p className="chip-change-empty">Chip denominations could not be loaded.</p> : menuAppearances.length === 0 ? <p className="chip-change-empty">No replacement denominations available.</p> : menuAppearances.map((appearance) => {
@@ -589,8 +628,8 @@ export function ActiveHandPage() {
               {selectedTotal === 0 && <span className="chip-change-empty">Choose denominations to continue.</span>}
             </div>
             <button className="primary-button chip-change-confirm" type="button" disabled={!canConfirmChipChange(sourceTotal, selectedTotal)} onClick={confirmChipChange}>Confirm change</button>
-          </>}
-        </div>}
+          </section>
+        </div>, document.body)}
         <div className="table-instruction">{isMyTurn ? 'Move chips to the pot to choose your action' : `Waiting for ${hand.players.find((player) => player.id === hand.currentPlayerId)?.name ?? 'another player'}`}</div>
       </div>
 
