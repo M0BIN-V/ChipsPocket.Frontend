@@ -5,7 +5,7 @@ import { getMe } from '../../api/auth'
 import { getUserStack } from '../../api/buyIn'
 import { mockHandService } from '../../api/handService'
 import { chipAppearanceService } from './chipAppearanceService'
-import { mockChipChangeService } from './chipChangeService'
+import { canAddReplacementChip, canConfirmChipChange, getChipValueTotal, mockChipChangeService } from './chipChangeService'
 import { getAvailableAction } from './handAction'
 import type { Chip, ChipColor, ChipStack, HandPlayer, HandState } from './hand.types'
 import type { ChipAppearance, UserStackResponse } from './table.types'
@@ -33,7 +33,9 @@ interface ReturningChip {
 }
 
 interface ChipMenuState {
-  chipId: string
+  sourceChipIds: string[]
+  stackChipIds: string[]
+  selectedChipId: string
   left: number
   top: number
   mode: 'actions' | 'change'
@@ -178,12 +180,19 @@ export function ActiveHandPage() {
     ? `${action} ${money(selectedAmount)}`
     : action
   const isMyTurn = hand.currentPlayerId === hand.myPlayerId
-  const menuChip = chipMenu ? hand.myStack.flatMap((stack) => stack.chips).find((chip) => chip.id === chipMenu.chipId) : undefined
-  const menuAppearances = menuChip
-    ? chipAppearances.filter((appearance) => appearance.value > 0 && appearance.value <= menuChip.value).sort((first, second) => second.value - first.value)
+  const menuChips = chipMenu ? hand.myStack.flatMap((stack) => stack.chips).filter((chip) => chipMenu.sourceChipIds.includes(chip.id)) : []
+  const sourceTotal = getChipValueTotal(menuChips)
+  const sourceGroups = menuChips.reduce<{ chip: Chip; count: number }[]>((groups, chip) => {
+    const existing = groups.find((group) => group.chip.value === chip.value && group.chip.picture === chip.picture)
+    if (existing) existing.count += 1
+    else groups.push({ chip, count: 1 })
+    return groups
+  }, [])
+  const menuAppearances = menuChips.length > 0
+    ? chipAppearances.filter((appearance) => appearance.value > 0 && appearance.value <= sourceTotal).sort((first, second) => second.value - first.value)
     : []
   const selectedTotal = chipAppearances.reduce((total, appearance) => total + appearance.value * (selectedDenominations[appearance.id] ?? 0), 0)
-  const remainingValue = (menuChip?.value ?? 0) - selectedTotal
+  const remainingValue = sourceTotal - selectedTotal
 
   function toPosition(clientX: number, clientY: number) {
     const rect = boardRef.current?.getBoundingClientRect()
@@ -218,12 +227,14 @@ export function ActiveHandPage() {
     longPressRef.current = null
   }
 
-  function showChipMenu(chipId: string, clientX: number, clientY: number) {
+  function showChipMenu(sourceChipIds: string[], stackChipIds: string[], selectedChipId: string, clientX: number, clientY: number) {
     const board = boardRef.current?.getBoundingClientRect()
     if (!board) return
-    const left = Math.max(8, Math.min(board.width - 308, clientX - board.left))
-    const top = Math.max(8, Math.min(board.height - 430, clientY - board.top))
-    setChipMenu({ chipId, left, top, mode: 'actions' })
+    const pointerX = Number.isFinite(clientX) ? clientX : board.left + 8
+    const pointerY = Number.isFinite(clientY) ? clientY : board.top + 8
+    const left = Math.max(8, Math.min(board.width - 308, pointerX - board.left))
+    const top = Math.max(8, Math.min(board.height - 430, pointerY - board.top))
+    setChipMenu({ sourceChipIds, stackChipIds, selectedChipId, left, top, mode: 'actions' })
   }
 
   function handleChipPointerDown(event: React.PointerEvent<HTMLButtonElement>, source: StackSource, stack: ChipStack, moveStack: boolean, chip: Chip) {
@@ -235,7 +246,8 @@ export function ActiveHandPage() {
     const timer = window.setTimeout(() => {
       longPressRef.current = null
       setDrag(null)
-      showChipMenu(chip.id, clientX, clientY)
+      const stackChipIds = stack.chips.map((stackChip) => stackChip.id)
+      showChipMenu(stackChipIds, stackChipIds, chip.id, clientX, clientY)
     }, 520)
     longPressRef.current = { timer, pointerId, startX: clientX, startY: clientY }
   }
@@ -246,12 +258,23 @@ export function ActiveHandPage() {
     if (Math.hypot(event.clientX - pendingPress.startX, event.clientY - pendingPress.startY) > 10) clearLongPress()
   }
 
-  function handleChipContextMenu(event: React.MouseEvent<HTMLButtonElement>, source: StackSource, chip: Chip) {
+  function handleChipContextMenu(event: React.MouseEvent<HTMLButtonElement>, source: StackSource, stack: ChipStack, chip: Chip) {
     if (source !== 'player' || !chip.isMine) return
+    event.preventDefault()
+    event.stopPropagation()
+    clearLongPress()
+    setDrag(null)
+    showChipMenu([chip.id], stack.chips.map((stackChip) => stackChip.id), chip.id, event.clientX, event.clientY)
+  }
+
+  function handleStackContextMenu(event: React.MouseEvent<HTMLDivElement>, source: StackSource, stack: ChipStack) {
+    if (source !== 'player' || event.target !== event.currentTarget) return
+    const sourceChipIds = stack.chips.filter((chip) => chip.isMine).map((chip) => chip.id)
+    if (sourceChipIds.length === 0) return
     event.preventDefault()
     clearLongPress()
     setDrag(null)
-    showChipMenu(chip.id, event.clientX, event.clientY)
+    showChipMenu(sourceChipIds, sourceChipIds, sourceChipIds[0], event.clientX, event.clientY)
   }
 
   function confirmChipChange() {
@@ -267,7 +290,7 @@ export function ActiveHandPage() {
       }),
     ))
     try {
-      setHand(mockChipChangeService.change(hand, chipMenu.chipId, replacements))
+      setHand(mockChipChangeService.change(hand, chipMenu.sourceChipIds, replacements))
       setChipMenu(null)
       setSelectedDenominations({})
     } catch {
@@ -437,6 +460,7 @@ export function ActiveHandPage() {
         key={stack.id}
         style={{ left: `${position.x * 100}%`, top: `${position.y * 100}%` }}
         onPointerDown={(event) => beginDrag(event, source, stack, true)}
+        onContextMenu={(event) => handleStackContextMenu(event, source, stack)}
         aria-label={`${stack.chips.length} chip stack worth ${money(chipTotal([stack]))}`}
       >
         {chips.map((chip, index) => (
@@ -450,7 +474,7 @@ export function ActiveHandPage() {
             onPointerMove={handleChipPointerMove}
             onPointerUp={clearLongPress}
             onPointerCancel={clearLongPress}
-            onContextMenu={(event) => handleChipContextMenu(event, source, chip)}
+            onContextMenu={(event) => handleChipContextMenu(event, source, stack, chip)}
             aria-label={`${money(chip.value)} ${chip.color} chip`}
           ><img src={chip.picture ?? `/${chip.color}-chip.png`} alt={`${chip.value} chip`} draggable={false} /></button>
         ))}
@@ -492,24 +516,39 @@ export function ActiveHandPage() {
         <div className="table-watermark">CHIPSPOCKET <span>♠ ♣ ♥ ♦</span></div>
         <div className="player-stack-label"><span>YOUR STACK</span><strong>{money(hand.myRemainingStack - selectedAmount)}</strong></div>
         <div className="player-chips">{renderStacks(hand.myStack, 'player')}</div>
-        {chipMenu && menuChip && <div
+        {chipMenu && menuChips.length > 0 && <div
           className={`chip-change-menu ${chipMenu.mode === 'change' ? 'chip-change-panel' : 'chip-context-menu'}`}
           data-chip-change-menu
           role={chipMenu.mode === 'change' ? 'dialog' : 'menu'}
           aria-label={chipMenu.mode === 'change' ? 'Change chip' : 'Chip actions'}
           style={{ left: chipMenu.left, top: chipMenu.top }}
         >
-          {chipMenu.mode === 'actions' ? <button className="chip-menu-action" type="button" role="menuitem" onClick={() => {
-            setSelectedDenominations({})
-            setChipMenu({ ...chipMenu, mode: 'change' })
-          }}>Change</button> : <>
+          {chipMenu.mode === 'actions' ? <>
+            <button className="chip-menu-action" type="button" role="menuitem" onClick={() => {
+              setSelectedDenominations({})
+              setChipMenu({ ...chipMenu, mode: 'change' })
+            }}>Change</button>
+            {chipMenu.sourceChipIds.length === 1 && chipMenu.stackChipIds.length > 1 && <button className="chip-menu-action" type="button" role="menuitem" onClick={() => {
+              setSelectedDenominations({})
+              setChipMenu({ ...chipMenu, sourceChipIds: chipMenu.stackChipIds, mode: 'change' })
+            }}>Change stack</button>}
+            {chipMenu.sourceChipIds.length > 1 && <button className="chip-menu-action" type="button" role="menuitem" onClick={() => {
+              setSelectedDenominations({})
+              setChipMenu({ ...chipMenu, sourceChipIds: [chipMenu.selectedChipId], mode: 'change' })
+            }}>Change chip</button>}
+          </> : <>
             <div className="chip-change-heading">
-              <div><p className="active-hand-kicker">CHIP CHANGE</p><h2>Make change</h2></div>
+              <div><p className="active-hand-kicker">CHIP CHANGE</p><h2>{menuChips.length > 1 ? 'Change chips' : 'Make change'}</h2></div>
               <button className="icon-button" type="button" onClick={() => setChipMenu(null)} aria-label="Close chip change"><X size={17} /></button>
             </div>
             <div className="chip-change-original">
-              <img src={menuChip.picture ?? `/${menuChip.color}-chip.png`} alt="" />
-              <div><span>Original</span><strong>{money(menuChip.value)}</strong></div>
+              <div className="chip-change-source-chips">
+                {sourceGroups.map(({ chip, count }) => <span className="chip-change-source-group" key={`${chip.value}-${chip.picture}`}>
+                  <img src={chip.picture ?? `/${chip.color}-chip.png`} alt="" />
+                  <b>{count} × {money(chip.value)}</b>
+                </span>)}
+              </div>
+              <div><span>{menuChips.length > 1 ? 'Total value' : 'Original'}</span><strong>{money(sourceTotal)}</strong></div>
             </div>
             <div className="chip-change-totals" aria-live="polite">
               <span>Selected <strong>{money(selectedTotal)}</strong></span>
@@ -518,7 +557,7 @@ export function ActiveHandPage() {
             <div className="chip-change-denominations" aria-label="Available denominations">
               {chipAppearancesError ? <p className="chip-change-empty">Chip denominations could not be loaded.</p> : menuAppearances.length === 0 ? <p className="chip-change-empty">No replacement denominations available.</p> : menuAppearances.map((appearance) => {
                 const count = selectedDenominations[appearance.id] ?? 0
-                const disabled = selectedTotal + appearance.value > menuChip.value
+                const disabled = !canAddReplacementChip(sourceTotal, selectedTotal, appearance.value)
                 return <button
                   className="chip-denomination"
                   key={appearance.id}
@@ -549,7 +588,7 @@ export function ActiveHandPage() {
               </div>)}
               {selectedTotal === 0 && <span className="chip-change-empty">Choose denominations to continue.</span>}
             </div>
-            <button className="primary-button chip-change-confirm" type="button" disabled={selectedTotal !== menuChip.value} onClick={confirmChipChange}>Confirm change</button>
+            <button className="primary-button chip-change-confirm" type="button" disabled={!canConfirmChipChange(sourceTotal, selectedTotal)} onClick={confirmChipChange}>Confirm change</button>
           </>}
         </div>}
         <div className="table-instruction">{isMyTurn ? 'Move chips to the pot to choose your action' : `Waiting for ${hand.players.find((player) => player.id === hand.currentPlayerId)?.name ?? 'another player'}`}</div>

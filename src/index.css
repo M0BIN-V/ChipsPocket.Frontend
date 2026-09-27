@@ -473,6 +473,9 @@ img, video, svg { display: block; max-width: 100%; }
 .chip-change-heading h2 { margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 1.02rem; }
 .chip-change-heading .icon-button { width: 34px; height: 34px; border-radius: 10px; }
 .chip-change-original { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border: 1px solid rgba(167, 181, 150, 0.14); border-radius: 9px; background: rgba(8, 12, 9, 0.48); }
+.chip-change-source-chips { display: flex; min-width: 0; flex: 1 1 115px; flex-wrap: wrap; align-items: center; gap: 2px 7px; }
+.chip-change-source-group { display: inline-flex; align-items: center; gap: 4px; color: var(--text-soft); font-size: 0.63rem; white-space: nowrap; }
+.chip-change-source-group img { width: 25px; height: 25px; object-fit: contain; }
 .chip-change-original img { width: 36px; height: 36px; object-fit: contain; }
 .chip-change-original span, .chip-change-original strong { display: block; }
 .chip-change-original span { color: var(--text-muted); font-size: 0.68rem; }
