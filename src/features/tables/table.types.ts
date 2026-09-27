@@ -77,11 +77,21 @@ export interface TableSeatInfo {
   user: { id?: string; username: string } | null
 }
 
+export interface ActiveHandInfo {
+  tableId: string
+  argId: string
+  dealerSeatId: string
+  smallBlindSeatId: string
+  bigBlindSeatId: string
+  currentStreet: string
+  waitingForActionDto: unknown
+}
+
 export interface TableInfoResponse {
   id: string
   name: string
   managerId: string
-  isRunning: boolean
+  activeHand: ActiveHandInfo | null
   seats: TableSeatInfo[]
 }
 

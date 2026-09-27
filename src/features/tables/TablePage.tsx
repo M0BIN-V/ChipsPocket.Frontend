@@ -50,6 +50,7 @@ export function TablePage() {
   const joinUrl = joinToken ? buildTableJoinUrl(joinToken) : null
   const tableLoadError = tableError ?? (!tableId ? 'Table information is unavailable.' : null)
   const isManager = Boolean(currentUserId && tableInfo?.managerId && currentUserId === tableInfo.managerId)
+  const isHandRunning = Boolean(tableInfo?.activeHand)
   const allMembersSeated = lobbyUsers.length > 0 && lobbyUsers.every((member) => tableInfo?.seats.some((seat) => seat.user?.id === member.id || seat.user?.username === member.username))
 
   const loadMembers = useCallback(async () => {
@@ -151,6 +152,12 @@ export function TablePage() {
     })
     return () => { isMounted = false }
   }, [tableId])
+
+  useEffect(() => {
+    const activeHandId = tableInfo?.activeHand?.argId
+    if (!tableId || !activeHandId) return
+    navigate(`/tables/${encodeURIComponent(tableId)}/hands/${encodeURIComponent(activeHandId)}`, { replace: true })
+  }, [navigate, tableId, tableInfo?.activeHand?.argId])
 
   useEffect(() => {
     if (tableState?.joinToken) return
@@ -292,13 +299,12 @@ export function TablePage() {
   }
 
   async function handleStartHand() {
-    if (!tableId || !isManager || !allMembersSeated || isStartingHand || tableInfo?.isRunning) return
+    if (!tableId || !isManager || !allMembersSeated || isStartingHand || isHandRunning) return
 
     setHandError(null)
     setIsStartingHand(true)
     try {
       const createdHand = await createHand(tableId)
-      setTableInfo((currentTable) => currentTable ? { ...currentTable, isRunning: true } : currentTable)
       navigate(`/tables/${encodeURIComponent(tableId)}/hands/${encodeURIComponent(createdHand.handId)}`)
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response?.status === 400) {
@@ -317,6 +323,10 @@ export function TablePage() {
   const currentUserSeat = tableInfo?.seats.find((seat) => seat.user?.username === currentUserName)
   const occupiedSeats = tableInfo?.seats.filter((seat) => seat.user).length ?? 0
   const openSeats = (tableInfo?.seats.length ?? 0) - occupiedSeats
+
+  if (tableInfo?.activeHand?.argId) {
+    return <main className="app-shell active-hand-loading"><LoaderCircle size={26} className="animate-spin" aria-label="Opening active hand" /></main>
+  }
 
   return (
     <main className="app-shell">
@@ -412,7 +422,7 @@ export function TablePage() {
               </div>
 
               <div className="mx-auto mt-8 max-w-md text-center">
-                {!tableInfo.isRunning && isManager && (
+                {!isHandRunning && isManager && (
                   <>
                     {allMembersSeated && <button className="primary-button w-full" type="button" onClick={() => { void handleStartHand() }} disabled={isStartingHand}>
                       {isStartingHand && <LoaderCircle size={18} strokeWidth={2.3} className="animate-spin" />}
@@ -423,10 +433,10 @@ export function TablePage() {
                     </p>
                   </>
                 )}
-                {!tableInfo.isRunning && !isManager && (
+                {!isHandRunning && !isManager && (
                   <p className="text-sm leading-6 text-[#a5aaa1]" role="status">Waiting for all players to choose their seats. The table manager will start the hand when everyone is ready.</p>
                 )}
-                {tableInfo.isRunning && <p className="text-sm font-medium text-[#d9ed7a]" role="status">Hand in progress.</p>}
+                {isHandRunning && <p className="text-sm font-medium text-[#d9ed7a]" role="status">Hand in progress.</p>}
                 {handError && <p className="form-error mt-3 text-left" role="alert"><span aria-hidden="true"><AlertTriangle size={16} strokeWidth={2.3} /></span><span>{handError}</span></p>}
               </div>
             </>

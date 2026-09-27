@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, LoaderCircle, Users, X } from 'lucide-react'
+import { ArrowLeft, LoaderCircle, Minus, Plus, Undo2, Users, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { getMe } from '../../api/auth'
+import { getUserStack } from '../../api/buyIn'
 import { mockHandService } from '../../api/handService'
+import { chipAppearanceService } from './chipAppearanceService'
+import { mockChipChangeService } from './chipChangeService'
 import { getAvailableAction } from './handAction'
-import type { Chip, ChipStack, HandPlayer, HandState } from './hand.types'
+import type { Chip, ChipColor, ChipStack, HandPlayer, HandState } from './hand.types'
+import type { ChipAppearance, UserStackResponse } from './table.types'
 
 const STACK_SNAP_DISTANCE = 0.06
 const CHIP_HEIGHT = 0.9
@@ -18,6 +23,29 @@ interface DragState {
   moveStack: boolean
 }
 
+interface ReturningChip {
+  chip: Chip
+  startX: number
+  startY: number
+  deltaX: number
+  deltaY: number
+  delay: number
+}
+
+interface ChipMenuState {
+  chipId: string
+  left: number
+  top: number
+  mode: 'actions' | 'change'
+}
+
+interface LongPressState {
+  timer: number
+  pointerId: number
+  startX: number
+  startY: number
+}
+
 function money(value: number) {
   return `$${value.toLocaleString('en-US')}`
 }
@@ -26,25 +54,84 @@ function chipTotal(stacks: ChipStack[]) {
   return stacks.reduce((total, stack) => total + stack.chips.reduce((stackTotal, chip) => stackTotal + chip.value, 0), 0)
 }
 
+function myContribution(stacks: ChipStack[]) {
+  return stacks.reduce((total, stack) => total + stack.chips.reduce((stackTotal, chip) => stackTotal + (chip.isMine ? chip.value : 0), 0), 0)
+}
+
+function chipColor(name: string, picture: string): ChipColor {
+  const source = `${name} ${picture}`.toLowerCase()
+  if (source.includes('red')) return 'red'
+  if (source.includes('green')) return 'green'
+  if (source.includes('yellow')) return 'yellow'
+  if (source.includes('blue')) return 'blue'
+  return 'black'
+}
+
+function chipPicture(name: string, picture: string, color: ChipColor): string {
+  if (/^(https?:|data:|\/)/i.test(picture)) return picture
+  const source = (picture || name).toLowerCase().replace(/\s+/g, '-')
+  return `/${source.includes('chip') ? source : `${source || color}-chip`}.png`
+}
+
+function buildPlayerChips(stack: UserStackResponse): Chip[] {
+  return stack.chips.flatMap((stackChip) => Array.from({ length: stackChip.count }, (_, index) => ({
+    id: `${stackChip.chipId}-${index}`,
+    color: chipColor(stackChip.name, stackChip.picture),
+    value: stackChip.value,
+    picture: chipPicture(stackChip.name, stackChip.picture, chipColor(stackChip.name, stackChip.picture)),
+    isMine: true,
+  })))
+}
+
 export function ActiveHandPage() {
   const navigate = useNavigate()
   const { tableId, handId } = useParams<{ tableId: string; handId: string }>()
   const [hand, setHand] = useState<HandState | null>(null)
+  const [chipAppearances, setChipAppearances] = useState<ChipAppearance[]>([])
+  const [chipAppearancesError, setChipAppearancesError] = useState(false)
   const [isPlayersOpen, setIsPlayersOpen] = useState(false)
+  const [chipMenu, setChipMenu] = useState<ChipMenuState | null>(null)
+  const [selectedDenominations, setSelectedDenominations] = useState<Record<string, number>>({})
   const [drag, setDrag] = useState<DragState | null>(null)
+  const [returningChips, setReturningChips] = useState<ReturningChip[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
   const potRef = useRef<HTMLDivElement>(null)
-  const [initialPotValue, setInitialPotValue] = useState(0)
+  const longPressRef = useRef<LongPressState | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    void chipAppearanceService.getAll().then((appearances) => {
+      if (mounted) setChipAppearances(appearances)
+    }).catch(() => {
+      if (mounted) setChipAppearancesError(true)
+    })
+    return () => { mounted = false }
+  }, [])
+
+  useEffect(() => {
+    function dismissMenu(event: PointerEvent) {
+      if (event.target instanceof Element && event.target.closest('[data-chip-change-menu]')) return
+      setChipMenu(null)
+    }
+    document.addEventListener('pointerdown', dismissMenu)
+    return () => document.removeEventListener('pointerdown', dismissMenu)
+  }, [])
 
   useEffect(() => {
     if (!handId || !tableId) return
     let mounted = true
-    void mockHandService.getHandState(handId, tableId).then((state) => {
-      if (mounted) {
+    void mockHandService.getHandState(handId, tableId).then(async (state) => {
+      if (!mounted) return
+      try {
+        const user = await getMe()
+        const userStack = await getUserStack(tableId, user.id)
+        const chips = buildPlayerChips(userStack)
+        setHand({ ...state, myStack: chips.length > 0 ? [{ id: 'user-stack', chips, position: { x: 0.5, y: 0.76 } }] : [] })
+      } catch {
         setHand(state)
-        setInitialPotValue(chipTotal(state.potChips))
+        setSubmitError('Unable to load your chips.')
       }
     })
     return () => { mounted = false }
@@ -85,9 +172,18 @@ export function ActiveHandPage() {
   }
 
   const currentPot = chipTotal(hand.potChips)
-  const selectedAmount = Math.max(0, currentPot - initialPotValue)
+  const selectedAmount = myContribution(hand.potChips)
   const action = getAvailableAction(hand, selectedAmount)
+  const actionLabel = selectedAmount > 0 && (action === 'CALL' || action === 'RAISE')
+    ? `${action} ${money(selectedAmount)}`
+    : action
   const isMyTurn = hand.currentPlayerId === hand.myPlayerId
+  const menuChip = chipMenu ? hand.myStack.flatMap((stack) => stack.chips).find((chip) => chip.id === chipMenu.chipId) : undefined
+  const menuAppearances = menuChip
+    ? chipAppearances.filter((appearance) => appearance.value > 0 && appearance.value <= menuChip.value).sort((first, second) => second.value - first.value)
+    : []
+  const selectedTotal = chipAppearances.reduce((total, appearance) => total + appearance.value * (selectedDenominations[appearance.id] ?? 0), 0)
+  const remainingValue = (menuChip?.value ?? 0) - selectedTotal
 
   function toPosition(clientX: number, clientY: number) {
     const rect = boardRef.current?.getBoundingClientRect()
@@ -115,6 +211,68 @@ export function ActiveHandPage() {
       grabOffset: { x: boardPosition.x - position.x, y: boardPosition.y - position.y },
       moveStack,
     })
+  }
+
+  function clearLongPress() {
+    if (longPressRef.current) window.clearTimeout(longPressRef.current.timer)
+    longPressRef.current = null
+  }
+
+  function showChipMenu(chipId: string, clientX: number, clientY: number) {
+    const board = boardRef.current?.getBoundingClientRect()
+    if (!board) return
+    const left = Math.max(8, Math.min(board.width - 308, clientX - board.left))
+    const top = Math.max(8, Math.min(board.height - 430, clientY - board.top))
+    setChipMenu({ chipId, left, top, mode: 'actions' })
+  }
+
+  function handleChipPointerDown(event: React.PointerEvent<HTMLButtonElement>, source: StackSource, stack: ChipStack, moveStack: boolean, chip: Chip) {
+    event.stopPropagation()
+    beginDrag(event, source, stack, moveStack, chip)
+    if (source !== 'player' || !chip.isMine || event.pointerType === 'mouse') return
+    clearLongPress()
+    const { clientX, clientY, pointerId } = event
+    const timer = window.setTimeout(() => {
+      longPressRef.current = null
+      setDrag(null)
+      showChipMenu(chip.id, clientX, clientY)
+    }, 520)
+    longPressRef.current = { timer, pointerId, startX: clientX, startY: clientY }
+  }
+
+  function handleChipPointerMove(event: React.PointerEvent<HTMLButtonElement>) {
+    const pendingPress = longPressRef.current
+    if (!pendingPress || pendingPress.pointerId !== event.pointerId) return
+    if (Math.hypot(event.clientX - pendingPress.startX, event.clientY - pendingPress.startY) > 10) clearLongPress()
+  }
+
+  function handleChipContextMenu(event: React.MouseEvent<HTMLButtonElement>, source: StackSource, chip: Chip) {
+    if (source !== 'player' || !chip.isMine) return
+    event.preventDefault()
+    clearLongPress()
+    setDrag(null)
+    showChipMenu(chip.id, event.clientX, event.clientY)
+  }
+
+  function confirmChipChange() {
+    if (!hand || !chipMenu) return
+    const replacements = chipAppearances.flatMap((appearance) => Array.from(
+      { length: selectedDenominations[appearance.id] ?? 0 },
+      () => ({
+        id: `changed-${crypto.randomUUID()}`,
+        color: chipColor(appearance.name, appearance.picture),
+        value: appearance.value,
+        picture: chipPicture(appearance.name, appearance.picture, chipColor(appearance.name, appearance.picture)),
+        isMine: true,
+      }),
+    ))
+    try {
+      setHand(mockChipChangeService.change(hand, chipMenu.chipId, replacements))
+      setChipMenu(null)
+      setSelectedDenominations({})
+    } catch {
+      setSubmitError('Unable to change this chip.')
+    }
   }
 
   function getDropTarget(clientX: number, clientY: number) {
@@ -156,7 +314,7 @@ export function ActiveHandPage() {
     const nextDestination = destination === drag.source ? withoutSource : destinationStacks
     const mergedDestination = target
       ? nextDestination.map((stack) => stack.id === target.id ? { ...stack, chips: [...stack.chips, ...draggedChips] } : stack)
-      : [...nextDestination, { id: `${destination}-stack-${Date.now()}`, chips: draggedChips, position }]
+      : [...nextDestination, { id: `${destination}-stack-${draggedChips.map((chip) => chip.id).join('-')}`, chips: draggedChips, position }]
     const nextPlayerStacks = drag.source === 'player'
       ? destination === 'player' ? [...keptSource, ...mergedDestination] : remainingSourceStacks
       : destination === 'player' ? mergedDestination : currentHand.myStack
@@ -177,6 +335,83 @@ export function ActiveHandPage() {
     if (!drag || drag.moveStack || !hand) return []
     const stacks = drag.source === 'player' ? hand.myStack : hand.potChips
     return stacks.find((stack) => stack.id === drag.stackId)?.chips.filter((chip) => drag.chipIds.includes(chip.id)) ?? []
+  }
+
+  function arrangeChips() {
+    setHand((currentHand) => {
+      if (!currentHand) return currentHand
+      const groups = new Map<string, Chip[]>()
+      currentHand.myStack.flatMap((stack) => stack.chips).forEach((chip) => {
+        const key = `${chip.color}-${chip.value}`
+        groups.set(key, [...(groups.get(key) ?? []), chip])
+      })
+      const groupedStacks = [...groups.entries()]
+        .sort(([, firstChips], [, secondChips]) => secondChips[0].value - firstChips[0].value)
+      const isCompactTable = (boardRef.current?.clientWidth ?? 0) < 520
+      const columns = isCompactTable ? Math.min(3, groupedStacks.length) : groupedStacks.length
+      const rows = Math.ceil(groupedStacks.length / Math.max(columns, 1))
+      const arrangedStacks = groupedStacks.map(([key, chips], index) => {
+        const row = Math.floor(index / Math.max(columns, 1))
+        const column = index % Math.max(columns, 1)
+        return {
+          id: `arranged-${key}`,
+          chips,
+          position: {
+            x: columns === 1 ? 0.5 : isCompactTable ? 0.18 + column * (0.64 / (columns - 1)) : 0.3 + index * (0.4 / (groupedStacks.length - 1)),
+            y: isCompactTable && rows > 1 ? 0.68 + row * (0.2 / (rows - 1)) : 0.78,
+          },
+        }
+      })
+      return { ...currentHand, myStack: arrangedStacks }
+    })
+    setDrag(null)
+  }
+
+  function cancelContribution() {
+    if (!hand || isSubmitting || selectedAmount === 0) return
+    const returnedChips = hand.potChips.flatMap((stack) => stack.chips.filter((chip) => chip.isMine))
+    const remainingPotStacks = hand.potChips
+      .map((stack) => ({ ...stack, chips: stack.chips.filter((chip) => !chip.isMine) }))
+      .filter((stack) => stack.chips.length > 0)
+    const returnedStack = hand.myStack.find((stack) => stack.id === 'returned-stack')
+    const targetPosition = returnedStack?.position ?? { x: 0.5, y: 0.78 }
+    const board = boardRef.current
+    const boardRect = board?.getBoundingClientRect()
+    const chipElements = board ? Array.from(board.querySelectorAll<HTMLElement>('[data-chip-id]')) : []
+    const animations = boardRect ? returnedChips.flatMap((chip, index) => {
+      const chipElement = chipElements.find((element) => element.dataset.chipId === chip.id)
+      if (!chipElement) return []
+      const chipRect = chipElement.getBoundingClientRect()
+      const startX = chipRect.left - boardRect.left + chipRect.width / 2
+      const startY = chipRect.top - boardRect.top + chipRect.height / 2
+      return [{
+        chip,
+        startX,
+        startY,
+        deltaX: boardRect.width * targetPosition.x - startX,
+        deltaY: boardRect.height * targetPosition.y - startY,
+        delay: index * 28,
+      }]
+    }) : []
+    const nextPlayerStacks = returnedStack
+      ? hand.myStack.map((stack) => stack.id === 'returned-stack' ? { ...stack, chips: [...stack.chips, ...returnedChips] } : stack)
+      : [...hand.myStack, {
+        id: 'returned-stack',
+        chips: returnedChips,
+        position: { x: 0.5, y: 0.78 },
+      }]
+    setReturningChips(animations)
+    setHand({
+      ...hand,
+      myStack: nextPlayerStacks,
+      potChips: remainingPotStacks,
+    })
+    setSubmitError(null)
+  }
+
+  function handleTableDoubleClick(event: React.MouseEvent<HTMLDivElement>) {
+    event.preventDefault()
+    arrangeChips()
   }
 
   async function submitAction() {
@@ -202,15 +437,20 @@ export function ActiveHandPage() {
         key={stack.id}
         style={{ left: `${position.x * 100}%`, top: `${position.y * 100}%` }}
         onPointerDown={(event) => beginDrag(event, source, stack, true)}
-        aria-label={`${chips.length} chip stack worth ${money(chipTotal([{ ...stack, chips }]))}`}
+        aria-label={`${stack.chips.length} chip stack worth ${money(chipTotal([stack]))}`}
       >
         {chips.map((chip, index) => (
           <button
             className={`poker-chip chip-${chip.color} ${index === chips.length - 1 ? 'chip-top' : ''}`}
             key={chip.id}
+            data-chip-id={chip.id}
             type="button"
             style={{ bottom: `${index * CHIP_HEIGHT}rem` }}
-            onPointerDown={(event) => { event.stopPropagation(); beginDrag(event, source, stack, index !== chips.length - 1, chip) }}
+            onPointerDown={(event) => handleChipPointerDown(event, source, stack, index !== chips.length - 1, chip)}
+            onPointerMove={handleChipPointerMove}
+            onPointerUp={clearLongPress}
+            onPointerCancel={clearLongPress}
+            onContextMenu={(event) => handleChipContextMenu(event, source, chip)}
             aria-label={`${money(chip.value)} ${chip.color} chip`}
           ><img src={chip.picture ?? `/${chip.color}-chip.png`} alt={`${chip.value} chip`} draggable={false} /></button>
         ))}
@@ -221,12 +461,12 @@ export function ActiveHandPage() {
   return (
     <main className="active-hand-shell">
       <header className="active-hand-header">
-        <button className="icon-button" type="button" onClick={() => navigate(`/tables/${encodeURIComponent(tableId ?? '')}`)} aria-label="Back to table"><ArrowLeft size={18} /></button>
+        <button className="icon-button" type="button" onClick={() => navigate('/')} aria-label="Back to home"><ArrowLeft size={18} /></button>
         <div><p className="active-hand-kicker">HAND {hand.handId.slice(-6)}</p><h1>Private table</h1></div>
         <button className="players-button" type="button" onClick={() => setIsPlayersOpen(true)}><Users size={17} /> Players</button>
       </header>
 
-      <div className="active-table" ref={boardRef}>
+      <div className="active-table" ref={boardRef} onDoubleClick={handleTableDoubleClick}>
         <div className="pot-value"><span>POT</span><strong>{money(currentPot)}</strong></div>
         <div className={`pot-drop-zone ${drag ? 'pot-drop-active' : ''}`} ref={potRef}>
           <div className="pot-chips">{renderStacks(hand.potChips, 'pot')}</div>
@@ -234,19 +474,97 @@ export function ActiveHandPage() {
         {drag && draggedChips().map((chip) => (
           <span className={`poker-chip dragged-chip chip-${chip.color}`} key={`dragged-${chip.id}`} style={{ left: `${drag.position.x * 100}%`, top: `${drag.position.y * 100}%` }}><img src={chip.picture ?? `/${chip.color}-chip.png`} alt={`${chip.value} chip`} draggable={false} /></span>
         ))}
+        {returningChips.map(({ chip, startX, startY, deltaX, deltaY, delay }) => (
+          <span
+            aria-hidden="true"
+            className="chip-return-animation"
+            key={`returning-${chip.id}`}
+            onAnimationEnd={() => setReturningChips((current) => current.filter((returningChip) => returningChip.chip.id !== chip.id))}
+            style={{
+              left: `${startX - 36.8}px`,
+              top: `${startY - 36.8}px`,
+              '--return-dx': `${deltaX}px`,
+              '--return-dy': `${deltaY}px`,
+              '--return-delay': `${delay}ms`,
+            } as React.CSSProperties}
+          ><img src={chip.picture ?? `/${chip.color}-chip.png`} alt="" draggable={false} /></span>
+        ))}
         <div className="table-watermark">CHIPSPOCKET <span>♠ ♣ ♥ ♦</span></div>
         <div className="player-stack-label"><span>YOUR STACK</span><strong>{money(hand.myRemainingStack - selectedAmount)}</strong></div>
         <div className="player-chips">{renderStacks(hand.myStack, 'player')}</div>
+        {chipMenu && menuChip && <div
+          className={`chip-change-menu ${chipMenu.mode === 'change' ? 'chip-change-panel' : 'chip-context-menu'}`}
+          data-chip-change-menu
+          role={chipMenu.mode === 'change' ? 'dialog' : 'menu'}
+          aria-label={chipMenu.mode === 'change' ? 'Change chip' : 'Chip actions'}
+          style={{ left: chipMenu.left, top: chipMenu.top }}
+        >
+          {chipMenu.mode === 'actions' ? <button className="chip-menu-action" type="button" role="menuitem" onClick={() => {
+            setSelectedDenominations({})
+            setChipMenu({ ...chipMenu, mode: 'change' })
+          }}>Change</button> : <>
+            <div className="chip-change-heading">
+              <div><p className="active-hand-kicker">CHIP CHANGE</p><h2>Make change</h2></div>
+              <button className="icon-button" type="button" onClick={() => setChipMenu(null)} aria-label="Close chip change"><X size={17} /></button>
+            </div>
+            <div className="chip-change-original">
+              <img src={menuChip.picture ?? `/${menuChip.color}-chip.png`} alt="" />
+              <div><span>Original</span><strong>{money(menuChip.value)}</strong></div>
+            </div>
+            <div className="chip-change-totals" aria-live="polite">
+              <span>Selected <strong>{money(selectedTotal)}</strong></span>
+              <span>Remaining <strong>{money(remainingValue)}</strong></span>
+            </div>
+            <div className="chip-change-denominations" aria-label="Available denominations">
+              {chipAppearancesError ? <p className="chip-change-empty">Chip denominations could not be loaded.</p> : menuAppearances.length === 0 ? <p className="chip-change-empty">No replacement denominations available.</p> : menuAppearances.map((appearance) => {
+                const count = selectedDenominations[appearance.id] ?? 0
+                const disabled = selectedTotal + appearance.value > menuChip.value
+                return <button
+                  className="chip-denomination"
+                  key={appearance.id}
+                  type="button"
+                  disabled={disabled}
+                  aria-label={`Add ${money(appearance.value)} chip`}
+                  onClick={() => setSelectedDenominations((current) => ({ ...current, [appearance.id]: (current[appearance.id] ?? 0) + 1 }))}
+                >
+                  <img src={chipPicture(appearance.name, appearance.picture, chipColor(appearance.name, appearance.picture))} alt="" />
+                  <span>{money(appearance.value)}</span>
+                  <Plus size={15} />
+                  {count > 0 && <b>{count}</b>}
+                </button>
+              })}
+            </div>
+            <div className="chip-change-selected">
+              <span className="chip-change-label">Replacement chips</span>
+              {menuAppearances.filter((appearance) => (selectedDenominations[appearance.id] ?? 0) > 0).map((appearance) => <div className="chip-selected-row" key={appearance.id}>
+                <img src={chipPicture(appearance.name, appearance.picture, chipColor(appearance.name, appearance.picture))} alt="" />
+                <span>{money(appearance.value)} × {selectedDenominations[appearance.id]}</span>
+                <button className="chip-remove-button" type="button" aria-label={`Remove one ${money(appearance.value)} chip`} onClick={() => setSelectedDenominations((current) => {
+                  const nextCount = (current[appearance.id] ?? 0) - 1
+                  const next = { ...current }
+                  if (nextCount > 0) next[appearance.id] = nextCount
+                  else delete next[appearance.id]
+                  return next
+                })}><Minus size={15} /></button>
+              </div>)}
+              {selectedTotal === 0 && <span className="chip-change-empty">Choose denominations to continue.</span>}
+            </div>
+            <button className="primary-button chip-change-confirm" type="button" disabled={selectedTotal !== menuChip.value} onClick={confirmChipChange}>Confirm change</button>
+          </>}
+        </div>}
         <div className="table-instruction">{isMyTurn ? 'Move chips to the pot to choose your action' : `Waiting for ${hand.players.find((player) => player.id === hand.currentPlayerId)?.name ?? 'another player'}`}</div>
       </div>
 
       <section className="action-dock" aria-live="polite">
         {!isMyTurn && <p className="waiting-message">Waiting for another player...</p>}
         {submitError && <p className="submit-error" role="alert">{submitError}</p>}
-        <button className="primary-button action-button" type="button" onClick={() => { void submitAction() }} disabled={!isMyTurn || isSubmitting}>
-          {isSubmitting && <LoaderCircle size={18} className="animate-spin" />}
-          {isSubmitting ? 'Loading...' : action}
-        </button>
+        <div className="action-controls">
+          {selectedAmount > 0 && <button className="icon-button cancel-bet-button" type="button" onClick={cancelContribution} disabled={isSubmitting} aria-label="Cancel bet and return chips" title="Return chips to your stack"><Undo2 size={18} strokeWidth={2.2} /></button>}
+          <button className="primary-button action-button" type="button" onClick={() => { void submitAction() }} disabled={!isMyTurn || isSubmitting}>
+            {isSubmitting && <LoaderCircle size={18} className="animate-spin" />}
+            {isSubmitting ? 'Loading...' : actionLabel}
+          </button>
+        </div>
       </section>
 
       {isPlayersOpen && <PlayersPanel players={hand.players} onClose={() => setIsPlayersOpen(false)} />}

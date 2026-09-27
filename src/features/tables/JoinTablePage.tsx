@@ -4,9 +4,9 @@ import axios from 'axios'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getMe } from '../../api/auth'
 import { getMyTables } from '../../api/tables'
-import { joinTableWithToken } from '../../api/tableLobby'
+import { getTableInfo, joinTableWithToken } from '../../api/tableLobby'
 import { QrScanner } from './QrScanner'
-import type { GetMyTablesResponse } from './table.types'
+import type { GetMyTablesResponse, TableInfoResponse } from './table.types'
 
 function formatRelativeTime(value: string): string {
   const now = Date.now()
@@ -55,6 +55,24 @@ export function JoinTablePage() {
     }
   }, [navigate])
 
+  const openTable = useCallback(async (tableId: string) => {
+    let tableInfo: TableInfoResponse | null = null
+
+    try {
+      tableInfo = await getTableInfo(tableId)
+    } catch {
+      navigate(`/tables/${encodeURIComponent(tableId)}`)
+      return
+    }
+
+    if (tableInfo.activeHand?.argId) {
+      navigate(`/tables/${encodeURIComponent(tableId)}/hands/${encodeURIComponent(tableInfo.activeHand.argId)}`)
+      return
+    }
+
+    navigate(`/tables/${encodeURIComponent(tableId)}`)
+  }, [navigate])
+
   useEffect(() => {
     let isMounted = true
     getMe().catch(() => {
@@ -82,7 +100,7 @@ export function JoinTablePage() {
     try {
       const tableId = await joinTableWithToken(normalizedToken)
       await loadMyTables()
-      navigate(`/tables/${encodeURIComponent(tableId)}`)
+      await openTable(tableId)
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 404) setJoinError('This code is invalid or has expired.')
@@ -95,7 +113,7 @@ export function JoinTablePage() {
     } finally {
       setIsJoining(false)
     }
-  }, [loadMyTables, navigate])
+  }, [loadMyTables, navigate, openTable])
 
   const handleQrScan = useCallback((value: string): boolean => {
     const normalizedValue = value.trim()
@@ -228,7 +246,7 @@ export function JoinTablePage() {
           ) : (
             <div className="table-list" aria-live="polite">
               {myTables.map((table) => (
-                <button key={table.tableId} className="table-card" type="button" onClick={() => navigate(`/tables/${encodeURIComponent(table.tableId)}`)}>
+                <button key={table.tableId} className="table-card" type="button" onClick={() => { void openTable(table.tableId) }}>
                   <span className="table-card-icon" aria-hidden="true"><UserRound size={18} strokeWidth={2.2} /></span>
                   <span className="table-card-copy">
                     <strong>{table.tableName}</strong>

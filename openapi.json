@@ -982,6 +982,17 @@
           }
         }
       },
+      "Street": {
+        "enum": [
+          "Pending",
+          "PreFlop",
+          "Flop",
+          "Turn",
+          "River",
+          "Showdown",
+          "Finished"
+        ]
+      },
       "UserStackChipResponse": {
         "required": [
           "chipId",
@@ -1044,6 +1055,46 @@
             "items": {
               "$ref": "#/components/schemas/UserStackChipResponse"
             }
+          }
+        }
+      },
+      "ViewActiveHandDto": {
+        "required": [
+          "tableId",
+          "argId",
+          "dealerSeatId",
+          "smallBlindSeatId",
+          "bigBlindSeatId",
+          "currentStreet",
+          "waitingForActionDto"
+        ],
+        "type": "object",
+        "properties": {
+          "tableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "argId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dealerSeatId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "smallBlindSeatId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bigBlindSeatId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currentStreet": {
+            "$ref": "#/components/schemas/Street"
+          },
+          "waitingForActionDto": {
+            "$ref": "#/components/schemas/WaitingForActionDto"
           }
         }
       },
@@ -1141,7 +1192,7 @@
           "name",
           "seats",
           "managerId",
-          "isRunning"
+          "activeHand"
         ],
         "type": "object",
         "properties": {
@@ -1161,8 +1212,15 @@
           "managerId": {
             "type": "string"
           },
-          "isRunning": {
-            "type": "boolean"
+          "activeHand": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ViewActiveHandDto"
+              }
+            ]
           }
         }
       },
@@ -1176,6 +1234,29 @@
             "type": "string"
           }
         }
+      },
+      "WaitingForActionDto": {
+        "required": [
+          "seatId",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "seatId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/WaitingForActionType"
+          }
+        }
+      },
+      "WaitingForActionType": {
+        "enum": [
+          "SmallBlind",
+          "BigBlind",
+          "BetAction"
+        ]
       }
     },
     "securitySchemes": {
