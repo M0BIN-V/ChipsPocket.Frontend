@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, LoaderCircle, Minus, Plus, Sparkles, Undo2, Users, X } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, LoaderCircle, Minus, Plus, Sparkles, Undo2, Users, X } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getMe } from '../../api/auth'
@@ -22,6 +22,7 @@ interface DragState {
   position: { x: number; y: number }
   grabOffset: { x: number; y: number }
   moveStack: boolean
+  isOverChangeZone: boolean
 }
 
 interface ReturningChip {
@@ -101,6 +102,7 @@ export function ActiveHandPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
   const potRef = useRef<HTMLDivElement>(null)
+  const changeZoneRef = useRef<HTMLDivElement>(null)
   const longPressRef = useRef<LongPressState | null>(null)
 
   useEffect(() => {
@@ -154,32 +156,100 @@ export function ActiveHandPage() {
     return () => { mounted = false }
   }, [handId, tableId])
 
+  function finishDrag(clientX: number, clientY: number, cancelled = false) {
+    if (!drag) return
+    const currentHand = hand
+    if (!currentHand) { setDrag(null); return }
+
+    if (cancelled) {
+      setDrag(null)
+      clearLongPress()
+      return
+    }
+
+    if (drag.isOverChangeZone) {
+      const sourceStacks = drag.source === 'player' ? currentHand.myStack : currentHand.potChips
+      const sourceStack = sourceStacks.find((stack) => stack.id === drag.stackId)
+      const sourceChipIds = drag.chipIds.length > 0 ? drag.chipIds : sourceStack?.chips.map((chip) => chip.id) ?? []
+      const stackChipIds = sourceStack?.chips.map((chip) => chip.id) ?? sourceChipIds
+      setDrag(null)
+      if (sourceChipIds.length > 0) {
+        setSelectedDenominations({})
+        setChipMenu({
+          sourceChipIds,
+          stackChipIds,
+          selectedChipId: sourceChipIds[0],
+          left: 0,
+          top: 0,
+          mode: 'change',
+        })
+      }
+      return
+    }
+
+    const sourceStacks = drag.source === 'player' ? currentHand.myStack : currentHand.potChips
+    const sourceStack = sourceStacks.find((stack) => stack.id === drag.stackId)
+    if (!sourceStack) { setDrag(null); return }
+    const draggedChips = sourceStack.chips.filter((chip) => drag.chipIds.includes(chip.id))
+    const remainingChips = sourceStack.chips.filter((chip) => !drag.chipIds.includes(chip.id))
+    const destination: StackSource = getDropTarget(clientX, clientY) ? 'pot' : 'player'
+    const destinationStacks = destination === 'player' ? currentHand.myStack : currentHand.potChips
+    const releasePosition = toPosition(clientX, clientY)
+    const position = {
+      x: Math.max(0.04, Math.min(0.96, releasePosition.x - drag.grabOffset.x)),
+      y: Math.max(0.08, Math.min(0.92, releasePosition.y - drag.grabOffset.y)),
+    }
+    const target = destination === 'pot' ? undefined : findSnapTarget(destinationStacks, sourceStack.id, position)
+    const keptSource = remainingChips.length > 0 ? [{ ...sourceStack, chips: remainingChips }] : []
+    const withoutSource = sourceStacks.filter((stack) => stack.id !== sourceStack.id)
+    const remainingSourceStacks = [...withoutSource, ...keptSource]
+    const nextDestination = destination === drag.source ? withoutSource : destinationStacks
+    const mergedDestination = target
+      ? nextDestination.map((stack) => stack.id === target.id ? { ...stack, chips: [...stack.chips, ...draggedChips] } : stack)
+      : [...nextDestination, { id: `${destination}-stack-${draggedChips.map((chip) => chip.id).join('-')}`, chips: draggedChips, position }]
+    const nextPlayerStacks = drag.source === 'player'
+      ? destination === 'player' ? [...keptSource, ...mergedDestination] : remainingSourceStacks
+      : destination === 'player' ? mergedDestination : currentHand.myStack
+    const nextPotStacks = drag.source === 'pot'
+      ? destination === 'pot' ? [...keptSource, ...mergedDestination] : remainingSourceStacks
+      : destination === 'pot' ? mergedDestination : currentHand.potChips
+    setHand({ ...currentHand, myStack: nextPlayerStacks, potChips: nextPotStacks })
+    setDrag(null)
+  }
+
   useEffect(() => {
     if (!drag) return
     function move(event: PointerEvent) {
       const board = boardRef.current
       if (!board) return
       const rect = board.getBoundingClientRect()
+      const zone = changeZoneRef.current?.getBoundingClientRect()
+      const isOverChangeZone = Boolean(zone && (
+        event.clientX >= zone.left && event.clientX <= zone.right &&
+        event.clientY >= zone.top && event.clientY <= zone.bottom
+      ))
       setDrag((current) => current && {
         ...current,
+        isOverChangeZone,
         position: {
           x: Math.max(0.04, Math.min(0.96, (event.clientX - rect.left) / rect.width - current.grabOffset.x)),
           y: Math.max(0.08, Math.min(0.92, (event.clientY - rect.top) / rect.height - current.grabOffset.y)),
         },
       })
     }
-    function end(event: PointerEvent) {
-      // The active drag callback intentionally reads the latest local hand state.
-      // eslint-disable-next-line react-hooks/immutability
-      finishDrag(event.clientX, event.clientY)
+    function handlePointerUp(event: PointerEvent) {
+      finishDrag(event.clientX, event.clientY, false)
+    }
+    function handlePointerCancel(event: PointerEvent) {
+      finishDrag(event.clientX, event.clientY, true)
     }
     window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', end)
-    window.addEventListener('pointercancel', end)
+    window.addEventListener('pointerup', handlePointerUp)
+    window.addEventListener('pointercancel', handlePointerCancel)
     return () => {
       window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', end)
-      window.removeEventListener('pointercancel', end)
+      window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener('pointercancel', handlePointerCancel)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drag])
@@ -246,6 +316,7 @@ export function ActiveHandPage() {
       position,
       grabOffset: { x: boardPosition.x - position.x, y: boardPosition.y - position.y },
       moveStack,
+      isOverChangeZone: false,
     })
   }
 
@@ -272,9 +343,6 @@ export function ActiveHandPage() {
     const { clientX, clientY, pointerId } = event
     const timer = window.setTimeout(() => {
       longPressRef.current = null
-      setDrag(null)
-      const stackChipIds = stack.chips.map((stackChip) => stackChip.id)
-      showChipMenu(stackChipIds, stackChipIds, chip.id, clientX, clientY)
     }, 520)
     longPressRef.current = { timer, pointerId, startX: clientX, startY: clientY }
   }
@@ -339,40 +407,6 @@ export function ActiveHandPage() {
       if (stack.id === sourceStackId) return false
       return stack.chips.some((_, index) => Math.hypot(stack.position.x - position.x, stack.position.y - index * chipOffset - position.y) < STACK_SNAP_DISTANCE)
     })
-  }
-
-  function finishDrag(clientX: number, clientY: number) {
-    if (!drag) return
-    const currentHand = hand
-    if (!currentHand) { setDrag(null); return }
-    const sourceStacks = drag.source === 'player' ? currentHand.myStack : currentHand.potChips
-    const sourceStack = sourceStacks.find((stack) => stack.id === drag.stackId)
-    if (!sourceStack) { setDrag(null); return }
-    const draggedChips = sourceStack.chips.filter((chip) => drag.chipIds.includes(chip.id))
-    const remainingChips = sourceStack.chips.filter((chip) => !drag.chipIds.includes(chip.id))
-    const destination: StackSource = getDropTarget(clientX, clientY) ? 'pot' : 'player'
-    const destinationStacks = destination === 'player' ? currentHand.myStack : currentHand.potChips
-    const releasePosition = toPosition(clientX, clientY)
-    const position = {
-      x: Math.max(0.04, Math.min(0.96, releasePosition.x - drag.grabOffset.x)),
-      y: Math.max(0.08, Math.min(0.92, releasePosition.y - drag.grabOffset.y)),
-    }
-    const target = destination === 'pot' ? undefined : findSnapTarget(destinationStacks, sourceStack.id, position)
-    const keptSource = remainingChips.length > 0 ? [{ ...sourceStack, chips: remainingChips }] : []
-    const withoutSource = sourceStacks.filter((stack) => stack.id !== sourceStack.id)
-    const remainingSourceStacks = [...withoutSource, ...keptSource]
-    const nextDestination = destination === drag.source ? withoutSource : destinationStacks
-    const mergedDestination = target
-      ? nextDestination.map((stack) => stack.id === target.id ? { ...stack, chips: [...stack.chips, ...draggedChips] } : stack)
-      : [...nextDestination, { id: `${destination}-stack-${draggedChips.map((chip) => chip.id).join('-')}`, chips: draggedChips, position }]
-    const nextPlayerStacks = drag.source === 'player'
-      ? destination === 'player' ? [...keptSource, ...mergedDestination] : remainingSourceStacks
-      : destination === 'player' ? mergedDestination : currentHand.myStack
-    const nextPotStacks = drag.source === 'pot'
-      ? destination === 'pot' ? [...keptSource, ...mergedDestination] : remainingSourceStacks
-      : destination === 'pot' ? mergedDestination : currentHand.potChips
-    setHand({ ...currentHand, myStack: nextPlayerStacks, potChips: nextPotStacks })
-    setDrag(null)
   }
 
   function visibleChips(stack: ChipStack) {
@@ -544,6 +578,12 @@ export function ActiveHandPage() {
         <div className="table-watermark">CHIPSPOCKET <span>♠ ♣ ♥ ♦</span></div>
         <div className="player-stack-label"><span>YOUR STACK</span><strong>{money(hand.myRemainingStack - selectedAmount)}</strong></div>
         <div className="player-chips">{renderStacks(hand.myStack, 'player')}</div>
+        <div ref={changeZoneRef} className={`change-drop-zone ${drag ? 'visible' : ''} ${drag?.isOverChangeZone ? 'active' : ''}`} aria-live="polite" aria-hidden={!drag}>
+          <div className="change-drop-zone-inner">
+            <span className="change-drop-icon"><ArrowLeftRight size={24} /></span>
+            <span className="change-drop-text">{drag?.isOverChangeZone ? 'RELEASE TO CHANGE' : 'DROP HERE TO CHANGE'}</span>
+          </div>
+        </div>
         {chipMenu?.mode === 'actions' && menuChips.length > 0 && <div
           className="chip-change-menu chip-context-menu"
           data-chip-change-menu
