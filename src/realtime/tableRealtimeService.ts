@@ -4,6 +4,7 @@ import {
   LogLevel,
   type HubConnection,
 } from '@microsoft/signalr'
+import { API_URL } from '../api/client'
 import { authStorage } from '../api/authStorage'
 
 export interface MemberJoinedToTableNotification {
@@ -74,9 +75,7 @@ function parseMemberReleasedSeatNotification(payload: unknown): MemberReleasedSe
 }
 
 function getHubUrl(): string {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '')
-  if (!apiBaseUrl) throw new Error('The API base URL is not configured.')
-  return `${apiBaseUrl}/hubs/table`
+  return `${API_URL.replace(/\/+$/, '')}/hubs/table`
 }
 
 export class TableRealtimeService {
