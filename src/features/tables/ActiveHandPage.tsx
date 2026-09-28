@@ -102,7 +102,7 @@ export function ActiveHandPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
   const potRef = useRef<HTMLDivElement>(null)
-  const changeZoneRef = useRef<HTMLDivElement>(null)
+  const changeZoneRef = useRef<HTMLButtonElement | null>(null)
   const longPressRef = useRef<LongPressState | null>(null)
 
   useEffect(() => {
@@ -578,12 +578,6 @@ export function ActiveHandPage() {
         <div className="table-watermark">CHIPSPOCKET <span>♠ ♣ ♥ ♦</span></div>
         <div className="player-stack-label"><span>YOUR STACK</span><strong>{money(hand.myRemainingStack - selectedAmount)}</strong></div>
         <div className="player-chips">{renderStacks(hand.myStack, 'player')}</div>
-        <div ref={changeZoneRef} className={`change-drop-zone ${drag ? 'visible' : ''} ${drag?.isOverChangeZone ? 'active' : ''}`} aria-live="polite" aria-hidden={!drag}>
-          <div className="change-drop-zone-inner">
-            <span className="change-drop-icon"><ArrowLeftRight size={24} /></span>
-            <span className="change-drop-text">{drag?.isOverChangeZone ? 'RELEASE TO CHANGE' : 'DROP HERE TO CHANGE'}</span>
-          </div>
-        </div>
         {chipMenu?.mode === 'actions' && menuChips.length > 0 && <div
           className="chip-change-menu chip-context-menu"
           data-chip-change-menu
@@ -673,12 +667,26 @@ export function ActiveHandPage() {
         <div className="table-instruction">{isMyTurn ? 'Move chips to the pot to choose your action' : `Waiting for ${hand.players.find((player) => player.id === hand.currentPlayerId)?.name ?? 'another player'}`}</div>
       </div>
 
+      <button
+        ref={changeZoneRef}
+        type="button"
+        className={`change-drop-zone ${drag ? 'visible' : ''} ${drag?.isOverChangeZone ? 'active' : ''}`}
+        aria-live="polite"
+        aria-label={drag?.isOverChangeZone ? 'Release to change chips' : 'Drop here to change chips'}
+        aria-hidden={!drag}
+      >
+        <span className="change-drop-zone-inner">
+          <span className="change-drop-icon"><ArrowLeftRight size={24} /></span>
+          <span className="change-drop-text">{drag?.isOverChangeZone ? 'RELEASE TO CHANGE' : 'DROP HERE TO CHANGE'}</span>
+        </span>
+      </button>
+
       <section className="action-dock" aria-live="polite">
         {!isMyTurn && <p className="waiting-message">Waiting for another player...</p>}
         {submitError && <p className="submit-error" role="alert">{submitError}</p>}
         <div className="action-controls">
-          {selectedAmount > 0 && <button className="icon-button cancel-bet-button" type="button" onClick={cancelContribution} disabled={isSubmitting} aria-label="Cancel bet and return chips" title="Return chips to your stack"><Undo2 size={18} strokeWidth={2.2} /></button>}
-          <button className="primary-button action-button" type="button" onClick={() => { void submitAction() }} disabled={!isMyTurn || isSubmitting}>
+          {selectedAmount > 0 && <button className={`icon-button cancel-bet-button ${drag ? 'change-zone-active' : ''}`} type="button" onClick={cancelContribution} disabled={isSubmitting || Boolean(drag)} aria-label="Cancel bet and return chips" aria-hidden={Boolean(drag)} title="Return chips to your stack"><Undo2 size={18} strokeWidth={2.2} /></button>}
+          <button className={`primary-button action-button ${drag ? 'change-zone-active' : ''}`} type="button" onClick={() => { void submitAction() }} disabled={!isMyTurn || isSubmitting || Boolean(drag)} aria-hidden={Boolean(drag)}>
             {isSubmitting && <LoaderCircle size={18} className="animate-spin" />}
             {isSubmitting ? 'Loading...' : actionLabel}
           </button>
