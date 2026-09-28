@@ -3,7 +3,6 @@ import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
@@ -11,7 +10,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      includeAssets: ['favicon.svg'],
+
+      includeAssets: [
+        'favicon.svg',
+      ],
+
       manifest: {
         name: 'ChipsPocket',
         short_name: 'ChipsPocket',
@@ -23,14 +26,27 @@ export default defineConfig({
         theme_color: '#111311',
         background_color: '#111311',
         icons: [
-          { src: '/pwa-icon-192.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
-          { src: '/pwa-icon-512.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' },
+          {
+            src: '/pwa-icon-192.svg',
+            sizes: '192x192',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
+          {
+            src: '/pwa-icon-512.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
         ],
       },
+
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globPatterns: [
+          '**/*.{js,css,svg,png,woff2}',
+        ],
         navigateFallback: 'index.html',
-        runtimeCaching: [],
+        cleanupOutdatedCaches: true,
       },
     }),
   ],
