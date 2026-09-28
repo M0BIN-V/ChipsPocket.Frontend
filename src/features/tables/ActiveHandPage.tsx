@@ -19,7 +19,8 @@ interface DragState {
   source: StackSource
   stackId: string
   chipIds: string[]
-  position: { x: number; y: number }
+  originalPosition: { x: number; y: number }
+  viewportPosition: { x: number; y: number }
   grabOffset: { x: number; y: number }
   moveStack: boolean
   isOverChangeZone: boolean
@@ -156,18 +157,45 @@ export function ActiveHandPage() {
     return () => { mounted = false }
   }, [handId, tableId])
 
+  function clearLongPress() {
+    if (longPressRef.current) window.clearTimeout(longPressRef.current.timer)
+    longPressRef.current = null
+  }
+
+  function getDropTarget(clientX: number, clientY: number) {
+    const potRect = potRef.current?.getBoundingClientRect()
+    return Boolean(potRect && clientX >= potRect.left && clientX <= potRect.right && clientY >= potRect.top && clientY <= potRect.bottom)
+  }
+
+  function findSnapTarget(stacks: ChipStack[], sourceStackId: string, position: { x: number; y: number }) {
+    const board = boardRef.current?.getBoundingClientRect()
+    if (!board) return undefined
+    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+    const chipOffset = CHIP_HEIGHT * rootFontSize / board.height
+    return stacks.find((stack) => {
+      if (stack.id === sourceStackId) return false
+      return stack.chips.some((_, index) => Math.hypot(stack.position.x - position.x, stack.position.y - index * chipOffset - position.y) < STACK_SNAP_DISTANCE)
+    })
+  }
+
   function finishDrag(clientX: number, clientY: number, cancelled = false) {
     if (!drag) return
     const currentHand = hand
     if (!currentHand) { setDrag(null); return }
 
     if (cancelled) {
+      animateDragBack(drag, currentHand)
       setDrag(null)
       clearLongPress()
       return
     }
 
-    if (drag.isOverChangeZone) {
+    const changeZone = changeZoneRef.current?.getBoundingClientRect()
+    const isOverChangeZone = Boolean(changeZone && (
+      clientX >= changeZone.left && clientX <= changeZone.right &&
+      clientY >= changeZone.top && clientY <= changeZone.bottom
+    ))
+    if (isOverChangeZone) {
       const sourceStacks = drag.source === 'player' ? currentHand.myStack : currentHand.potChips
       const sourceStack = sourceStacks.find((stack) => stack.id === drag.stackId)
       const sourceChipIds = drag.chipIds.length > 0 ? drag.chipIds : sourceStack?.chips.map((chip) => chip.id) ?? []
@@ -187,6 +215,14 @@ export function ActiveHandPage() {
       return
     }
 
+    const board = boardRef.current?.getBoundingClientRect()
+    const isOverTable = Boolean(board && clientX >= board.left && clientX <= board.right && clientY >= board.top && clientY <= board.bottom)
+    if (!isOverTable || !board) {
+      animateDragBack(drag, currentHand)
+      setDrag(null)
+      return
+    }
+
     const sourceStacks = drag.source === 'player' ? currentHand.myStack : currentHand.potChips
     const sourceStack = sourceStacks.find((stack) => stack.id === drag.stackId)
     if (!sourceStack) { setDrag(null); return }
@@ -194,10 +230,13 @@ export function ActiveHandPage() {
     const remainingChips = sourceStack.chips.filter((chip) => !drag.chipIds.includes(chip.id))
     const destination: StackSource = getDropTarget(clientX, clientY) ? 'pot' : 'player'
     const destinationStacks = destination === 'player' ? currentHand.myStack : currentHand.potChips
-    const releasePosition = toPosition(clientX, clientY)
+    const releasePosition = {
+      x: (clientX - board.left - drag.grabOffset.x) / board.width,
+      y: (clientY - board.top - drag.grabOffset.y) / board.height,
+    }
     const position = {
-      x: Math.max(0.04, Math.min(0.96, releasePosition.x - drag.grabOffset.x)),
-      y: Math.max(0.08, Math.min(0.92, releasePosition.y - drag.grabOffset.y)),
+      x: releasePosition.x,
+      y: releasePosition.y,
     }
     const target = destination === 'pot' ? undefined : findSnapTarget(destinationStacks, sourceStack.id, position)
     const keptSource = remainingChips.length > 0 ? [{ ...sourceStack, chips: remainingChips }] : []
@@ -217,12 +256,36 @@ export function ActiveHandPage() {
     setDrag(null)
   }
 
+  function animateDragBack(currentDrag: DragState, currentHand: HandState) {
+    const sourceStacks = currentDrag.source === 'player' ? currentHand.myStack : currentHand.potChips
+    const sourceStack = sourceStacks.find((stack) => stack.id === currentDrag.stackId)
+    const board = boardRef.current?.getBoundingClientRect()
+    if (!sourceStack || !board) return
+    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+    const chipSize = 4.6 * rootFontSize
+    const chipOffset = CHIP_HEIGHT * rootFontSize
+    const chips = sourceStack.chips.filter((chip) => currentDrag.chipIds.includes(chip.id))
+    setReturningChips(chips.map((chip, index) => {
+      const stackOffset = currentDrag.moveStack ? index * chipOffset : 0
+      const startX = currentDrag.viewportPosition.x - chipSize / 2
+      const startY = currentDrag.viewportPosition.y - chipSize / 2 - stackOffset
+      const targetX = board.left + board.width * currentDrag.originalPosition.x - chipSize / 2
+      const targetY = board.top + board.height * currentDrag.originalPosition.y - chipSize / 2 - stackOffset
+      return {
+        chip,
+        startX,
+        startY,
+        deltaX: targetX - startX,
+        deltaY: targetY - startY,
+        delay: index * 28,
+      }
+    }))
+  }
+
   useEffect(() => {
     if (!drag) return
     function move(event: PointerEvent) {
-      const board = boardRef.current
-      if (!board) return
-      const rect = board.getBoundingClientRect()
+      if (!boardRef.current) return
       const zone = changeZoneRef.current?.getBoundingClientRect()
       const isOverChangeZone = Boolean(zone && (
         event.clientX >= zone.left && event.clientX <= zone.right &&
@@ -231,10 +294,7 @@ export function ActiveHandPage() {
       setDrag((current) => current && {
         ...current,
         isOverChangeZone,
-        position: {
-          x: Math.max(0.04, Math.min(0.96, (event.clientX - rect.left) / rect.width - current.grabOffset.x)),
-          y: Math.max(0.08, Math.min(0.92, (event.clientY - rect.top) / rect.height - current.grabOffset.y)),
-        },
+        viewportPosition: { x: event.clientX - current.grabOffset.x, y: event.clientY - current.grabOffset.y },
       })
     }
     function handlePointerUp(event: PointerEvent) {
@@ -291,20 +351,17 @@ export function ActiveHandPage() {
     })
   }
 
-  function toPosition(clientX: number, clientY: number) {
-    const rect = boardRef.current?.getBoundingClientRect()
-    if (!rect) return { x: 0.5, y: 0.5 }
-    return { x: (clientX - rect.left) / rect.width, y: (clientY - rect.top) / rect.height }
-  }
-
   function beginDrag(event: React.PointerEvent, source: StackSource, stack: ChipStack, moveStack: boolean, selectedChip = stack.chips[stack.chips.length - 1]) {
     if (!isMyTurn || source === 'pot' && !selectedChip?.isMine) return
     event.preventDefault()
-    const boardPosition = toPosition(event.clientX, event.clientY)
+    event.currentTarget.setPointerCapture(event.pointerId)
     const board = boardRef.current?.getBoundingClientRect()
     const target = event.currentTarget.getBoundingClientRect()
-    const targetCenter = { x: (target.left + target.width / 2 - (board?.left ?? 0)) / (board?.width ?? 1), y: (target.top + target.height / 2 - (board?.top ?? 0)) / (board?.height ?? 1) }
-    const position = moveStack ? stack.position : targetCenter
+    if (!board) return
+    const originalPosition = moveStack
+      ? stack.position
+      : { x: (target.left + target.width / 2 - board.left) / board.width, y: (target.top + target.height / 2 - board.top) / board.height }
+    const targetCenter = { x: target.left + target.width / 2, y: target.top + target.height / 2 }
     const chipIds = moveStack
       ? stack.chips.filter((chip) => source !== 'pot' || chip.isMine).map((chip) => chip.id)
       : [selectedChip.id]
@@ -313,16 +370,12 @@ export function ActiveHandPage() {
       source,
       stackId: stack.id,
       chipIds,
-      position,
-      grabOffset: { x: boardPosition.x - position.x, y: boardPosition.y - position.y },
+      originalPosition,
+      viewportPosition: targetCenter,
+      grabOffset: { x: event.clientX - targetCenter.x, y: event.clientY - targetCenter.y },
       moveStack,
       isOverChangeZone: false,
     })
-  }
-
-  function clearLongPress() {
-    if (longPressRef.current) window.clearTimeout(longPressRef.current.timer)
-    longPressRef.current = null
   }
 
   function showChipMenu(sourceChipIds: string[], stackChipIds: string[], selectedChipId: string, clientX: number, clientY: number) {
@@ -393,32 +446,39 @@ export function ActiveHandPage() {
     }
   }
 
-  function getDropTarget(clientX: number, clientY: number) {
-    const potRect = potRef.current?.getBoundingClientRect()
-    return Boolean(potRect && clientX >= potRect.left && clientX <= potRect.right && clientY >= potRect.top && clientY <= potRect.bottom)
-  }
-
-  function findSnapTarget(stacks: ChipStack[], sourceStackId: string, position: { x: number; y: number }) {
-    const board = boardRef.current?.getBoundingClientRect()
-    if (!board) return undefined
-    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-    const chipOffset = CHIP_HEIGHT * rootFontSize / board.height
-    return stacks.find((stack) => {
-      if (stack.id === sourceStackId) return false
-      return stack.chips.some((_, index) => Math.hypot(stack.position.x - position.x, stack.position.y - index * chipOffset - position.y) < STACK_SNAP_DISTANCE)
-    })
-  }
-
   function visibleChips(stack: ChipStack) {
+    const returningChipIds = new Set(returningChips.map(({ chip }) => chip.id))
+    if (returningChipIds.size > 0) {
+      return stack.chips.filter((chip) => !returningChipIds.has(chip.id))
+    }
     if (!drag || drag.stackId !== stack.id || drag.source !== 'player' && drag.source !== 'pot') return stack.chips
     if (drag.moveStack) return stack.chips
     return stack.chips.filter((chip) => !drag.chipIds.includes(chip.id))
   }
 
   function draggedChips(): Chip[] {
-    if (!drag || drag.moveStack || !hand) return []
+    if (!drag || !hand) return []
     const stacks = drag.source === 'player' ? hand.myStack : hand.potChips
     return stacks.find((stack) => stack.id === drag.stackId)?.chips.filter((chip) => drag.chipIds.includes(chip.id)) ?? []
+  }
+
+  function renderDragOverlay() {
+    if (!drag) return null
+    const chips = draggedChips()
+    if (chips.length === 0) return null
+    return createPortal(
+      <div
+        className={`drag-overlay-stack ${drag.moveStack ? 'drag-overlay-multiple' : ''}`}
+        style={{ left: drag.viewportPosition.x, top: drag.viewportPosition.y }}
+      >
+        {chips.map((chip, index) => (
+          <span className="drag-overlay-chip" key={`drag-overlay-${chip.id}`} style={{ bottom: `${index * CHIP_HEIGHT}rem` }}>
+            <img src={chip.picture ?? `/${chip.color}-chip.png`} alt={`${chip.value} chip`} draggable={false} />
+          </span>
+        ))}
+      </div>,
+      document.body,
+    )
   }
 
   function arrangeChips() {
@@ -466,14 +526,16 @@ export function ActiveHandPage() {
       const chipElement = chipElements.find((element) => element.dataset.chipId === chip.id)
       if (!chipElement) return []
       const chipRect = chipElement.getBoundingClientRect()
-      const startX = chipRect.left - boardRect.left + chipRect.width / 2
-      const startY = chipRect.top - boardRect.top + chipRect.height / 2
+      const startX = chipRect.left
+      const startY = chipRect.top
+      const targetX = boardRect.left + boardRect.width * targetPosition.x - chipRect.width / 2
+      const targetY = boardRect.top + boardRect.height * targetPosition.y - chipRect.height / 2
       return [{
         chip,
         startX,
         startY,
-        deltaX: boardRect.width * targetPosition.x - startX,
-        deltaY: boardRect.height * targetPosition.y - startY,
+        deltaX: targetX - startX,
+        deltaY: targetY - startY,
         delay: index * 28,
       }]
     }) : []
@@ -514,12 +576,11 @@ export function ActiveHandPage() {
   const renderStacks = (stacks: ChipStack[], source: StackSource) => stacks.map((stack) => {
     const chips = visibleChips(stack)
     const isDragged = drag?.stackId === stack.id && drag.source === source && drag.moveStack
-    const position = isDragged ? drag.position : stack.position
     return (
       <div
         className={`chip-stack ${chips.length === 1 ? 'chip-stack-single' : ''} ${isDragged ? 'chip-stack-dragging' : ''}`}
         key={stack.id}
-        style={{ left: `${position.x * 100}%`, top: `${position.y * 100}%` }}
+        style={{ left: `${stack.position.x * 100}%`, top: `${stack.position.y * 100}%` }}
         onPointerDown={(event) => beginDrag(event, source, stack, true)}
         onContextMenu={(event) => handleStackContextMenu(event, source, stack)}
         aria-label={`${stack.chips.length} chip stack worth ${money(chipTotal([stack]))}`}
@@ -557,24 +618,6 @@ export function ActiveHandPage() {
         <div className={`pot-drop-zone ${drag ? 'pot-drop-active' : ''}`} ref={potRef}>
           <div className="pot-chips">{renderStacks(hand.potChips, 'pot')}</div>
         </div>
-        {drag && draggedChips().map((chip) => (
-          <span className={`poker-chip dragged-chip chip-${chip.color}`} key={`dragged-${chip.id}`} style={{ left: `${drag.position.x * 100}%`, top: `${drag.position.y * 100}%` }}><img src={chip.picture ?? `/${chip.color}-chip.png`} alt={`${chip.value} chip`} draggable={false} /></span>
-        ))}
-        {returningChips.map(({ chip, startX, startY, deltaX, deltaY, delay }) => (
-          <span
-            aria-hidden="true"
-            className="chip-return-animation"
-            key={`returning-${chip.id}`}
-            onAnimationEnd={() => setReturningChips((current) => current.filter((returningChip) => returningChip.chip.id !== chip.id))}
-            style={{
-              left: `${startX - 36.8}px`,
-              top: `${startY - 36.8}px`,
-              '--return-dx': `${deltaX}px`,
-              '--return-dy': `${deltaY}px`,
-              '--return-delay': `${delay}ms`,
-            } as React.CSSProperties}
-          ><img src={chip.picture ?? `/${chip.color}-chip.png`} alt="" draggable={false} /></span>
-        ))}
         <div className="table-watermark">CHIPSPOCKET <span>♠ ♣ ♥ ♦</span></div>
         <div className="player-stack-label"><span>YOUR STACK</span><strong>{money(hand.myRemainingStack - selectedAmount)}</strong></div>
         <div className="player-chips">{renderStacks(hand.myStack, 'player')}</div>
@@ -666,6 +709,23 @@ export function ActiveHandPage() {
         </div>, document.body)}
         <div className="table-instruction">{isMyTurn ? 'Move chips to the pot to choose your action' : `Waiting for ${hand.players.find((player) => player.id === hand.currentPlayerId)?.name ?? 'another player'}`}</div>
       </div>
+
+      {returningChips.length > 0 && createPortal(returningChips.map(({ chip, startX, startY, deltaX, deltaY, delay }) => (
+        <span
+          aria-hidden="true"
+          className="chip-return-animation"
+          key={`returning-${chip.id}`}
+          onAnimationEnd={() => setReturningChips((current) => current.filter((returningChip) => returningChip.chip.id !== chip.id))}
+          style={{
+            left: `${startX}px`,
+            top: `${startY}px`,
+            '--return-dx': `${deltaX}px`,
+            '--return-dy': `${deltaY}px`,
+            '--return-delay': `${delay}ms`,
+          } as React.CSSProperties}
+        ><img src={chip.picture ?? `/${chip.color}-chip.png`} alt="" draggable={false} /></span>
+      )), document.body)}
+      {renderDragOverlay()}
 
       <button
         ref={changeZoneRef}
