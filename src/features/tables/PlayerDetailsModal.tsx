@@ -1,39 +1,33 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { AlertTriangle, CheckCircle2, LoaderCircle, Minus, Plus, X } from 'lucide-react'
-import { getChips } from '../../api/chips'
-import { createBuyIn, createCashOut, getUserStack } from '../../api/buyIn'
-import type { ChipAppearance, UserStackResponse } from './table.types'
+import { addMemberBalance, deductMemberBalance, getMemberBalance } from '../../api/balance'
 import { getPlayerInitials } from './tableSeatLayout'
 
 interface PlayerDetailsModalProps {
   tableId: string
   player: { id?: string; username: string }
   isManager: boolean
+  onBalanceChange: (memberId: string, balance: number) => void
   onClose: () => void
-}
-
-function chipImage(picture: string): string {
-  if (/^(https?:|data:|\/)/i.test(picture)) return picture
-  const normalized = picture.toLowerCase().replace(/\s+/g, '-')
-  return `/${normalized.includes('chip') ? normalized : `${normalized}-chip`}.png`
 }
 
 function getTransactionError(error: unknown, action: 'add' | 'remove'): string {
   if (axios.isAxiosError(error)) {
     if (!error.response) return 'Unable to connect to the server.'
-    if (error.response.status === 401 || error.response.status === 403) return 'Only the table manager can manage chips.'
+    if (error.response.status === 401 || error.response.status === 403) return 'Only the table manager can adjust balances.'
     if (error.response.status === 404) return 'This player is no longer in the table lobby.'
-    if (error.response.status === 400) return action === 'remove' ? 'This player does not have enough of that chip.' : 'That chip is not available right now.'
+    if (error.response.status === 400 && action === 'remove') return 'This player does not have enough balance.'
+    if (error.response.status === 400) return 'Enter a valid positive amount.'
   }
-  return `Unable to ${action === 'add' ? 'add' : 'remove'} chips right now. Please try again.`
+  return `Unable to ${action === 'add' ? 'add' : 'remove'} money right now. Please try again.`
 }
 
-export function PlayerDetailsModal({ tableId, player, isManager, onClose }: PlayerDetailsModalProps) {
-  const [stack, setStack] = useState<UserStackResponse | null>(null)
-  const [chips, setChips] = useState<ChipAppearance[]>([])
+export function PlayerDetailsModal({ tableId, player, isManager, onBalanceChange, onClose }: PlayerDetailsModalProps) {
+  const [balance, setBalance] = useState<number | null>(null)
+  const [amount, setAmount] = useState('')
   const [isLoading, setIsLoading] = useState(Boolean(player.id))
-  const [processingChipId, setProcessingChipId] = useState<string | null>(null)
+  const [processingAction, setProcessingAction] = useState<'add' | 'remove' | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -43,55 +37,57 @@ export function PlayerDetailsModal({ tableId, player, isManager, onClose }: Play
       return () => { isMounted = false }
     }
 
-    Promise.all([getUserStack(tableId, player.id), getChips()]).then(([userStack, availableChips]) => {
+    getMemberBalance(tableId, player.id).then((currentBalance) => {
       if (!isMounted) return
-      setStack(userStack)
-      setChips(availableChips)
+      setBalance(currentBalance)
     }).catch(() => {
-      if (isMounted) setErrorMessage('Unable to load this player\'s chip details.')
+      if (isMounted) setErrorMessage('Unable to load this player\'s balance.')
     }).finally(() => {
       if (isMounted) setIsLoading(false)
     })
     return () => { isMounted = false }
   }, [player.id, tableId])
 
-  async function handleChipChange(chip: ChipAppearance, direction: 'add' | 'remove') {
-    if (!isManager || !player.id || processingChipId) return
-    const currentCount = stack?.chips.find((stackChip) => stackChip.chipId === chip.id)?.count ?? 0
-    if (direction === 'remove' && currentCount === 0) return
+  async function handleBalanceChange(direction: 'add' | 'remove') {
+    if (!isManager || !player.id || processingAction) return
+    const numericAmount = Number(amount)
+    if (!Number.isSafeInteger(numericAmount) || numericAmount < 1 || numericAmount > 2_147_483_647) {
+      setErrorMessage('Enter a positive whole amount no greater than 2,147,483,647.')
+      setSuccessMessage(null)
+      return
+    }
+    if (direction === 'remove' && balance !== null && numericAmount > balance) {
+      setErrorMessage('Amount exceeds this player\'s current balance.')
+      setSuccessMessage(null)
+      return
+    }
 
     setErrorMessage(null)
     setSuccessMessage(null)
-    setProcessingChipId(chip.id)
+    setProcessingAction(direction)
     try {
       if (direction === 'add') {
-        await createBuyIn(tableId, { destinationUserId: player.id, chipId: chip.id, chipCount: 1 })
+        await addMemberBalance(tableId, player.id, { value: numericAmount })
       } else {
-        await createCashOut(tableId, { sourceUserId: player.id, chipId: chip.id, chipCount: 1 })
+        await deductMemberBalance(tableId, player.id, { value: numericAmount })
       }
-      setStack((currentStack) => {
-        if (!currentStack) return currentStack
-        const nextCount = currentCount + (direction === 'add' ? 1 : -1)
-        const existingChip = currentStack.chips.find((stackChip) => stackChip.chipId === chip.id)
-        const nextChips = existingChip
-          ? currentStack.chips.map((stackChip) => stackChip.chipId === chip.id ? { ...stackChip, count: nextCount } : stackChip).filter((stackChip) => stackChip.count > 0)
-          : [...currentStack.chips, { ...chip, chipId: chip.id, count: nextCount }]
-        return { ...currentStack, chips: nextChips, totalValue: currentStack.totalValue + chip.value * (direction === 'add' ? 1 : -1) }
-      })
-      setSuccessMessage(`${direction === 'add' ? 'Added' : 'Removed'} one ${chip.name} ${direction === 'add' ? 'to' : 'from'} ${player.username}.`)
+      const nextBalance = (balance ?? 0) + numericAmount * (direction === 'add' ? 1 : -1)
+      setBalance(nextBalance)
+      onBalanceChange(player.id, nextBalance)
+      setSuccessMessage(`${direction === 'add' ? 'Added' : 'Removed'} $${numericAmount.toLocaleString()} ${direction === 'add' ? 'to' : 'from'} ${player.username}.`)
     } catch (error: unknown) {
       setErrorMessage(getTransactionError(error, direction))
     } finally {
-      setProcessingChipId(null)
+      setProcessingAction(null)
     }
   }
 
   return (
-    <div className="sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !processingChipId) onClose() }}>
+    <div className="sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !processingAction) onClose() }}>
       <section className="sheet-card player-details-sheet max-w-lg" role="dialog" aria-modal="true" aria-labelledby="player-details-title">
         <div className="sheet-header">
           <div><span className="eyebrow">Selected player</span><h2 id="player-details-title">Player Details</h2></div>
-          <button className="icon-button" type="button" onClick={onClose} disabled={Boolean(processingChipId)} aria-label="Close player details"><X size={18} strokeWidth={2.2} /></button>
+          <button className="icon-button" type="button" onClick={onClose} disabled={Boolean(processingAction)} aria-label="Close player details"><X size={18} strokeWidth={2.2} /></button>
         </div>
         <div className="player-details-body">
           <div className="mt-6 flex items-center gap-4 rounded-2xl border border-[#b7d334]/25 bg-[#b7d334]/10 p-4">
@@ -99,20 +95,22 @@ export function PlayerDetailsModal({ tableId, player, isManager, onClose }: Play
           <div className="min-w-0"><p className="truncate text-xl font-semibold text-white">{player.username}</p><p className="mt-1 text-sm text-[#a5aaa1]">At this table</p></div>
           </div>
           {isLoading && player.id && <div className="flex items-center justify-center gap-2 py-8 text-sm text-[#a5aaa1]"><LoaderCircle size={17} className="animate-spin" />Loading player details...</div>}
-          {!isLoading && stack && <>
-            <div className="mt-5 rounded-2xl bg-[#111311] p-4"><p className="text-xs uppercase tracking-[0.16em] text-[#8e968a]">Current balance</p><p className="mt-1 font-['Space_Grotesk'] text-3xl font-bold text-[#d9ed7a]">${stack.totalValue.toLocaleString()}</p></div>
-            {isManager && <div className="mt-5 space-y-2" aria-label={`${player.username} chip balances`}>
-              {chips.map((chip) => {
-                const count = stack.chips.find((stackChip) => stackChip.chipId === chip.id)?.count ?? 0
-                const isProcessing = processingChipId === chip.id
-                return <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#111311] p-3" key={chip.id}>
-                  <img className="h-11 w-11 shrink-0 object-contain" src={chipImage(chip.picture)} alt="" />
-                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{chip.name}</span><span className="mt-1 block text-xs text-[#a5aaa1]">{count} chip{count === 1 ? '' : 's'}</span></span>
-                  <button className="icon-button" type="button" onClick={() => { void handleChipChange(chip, 'remove') }} disabled={Boolean(processingChipId) || count === 0} aria-label={`Remove one ${chip.name}`}><Minus size={17} /></button>
-                  <strong className="w-8 text-center font-['Space_Grotesk'] text-lg text-[#d9ed7a]" aria-live="polite">{isProcessing ? <LoaderCircle size={17} className="mx-auto animate-spin" /> : count}</strong>
-                  <button className="icon-button" type="button" onClick={() => { void handleChipChange(chip, 'add') }} disabled={Boolean(processingChipId)} aria-label={`Add one ${chip.name}`}><Plus size={17} /></button>
-                </div>
-              })}
+          {!isLoading && balance !== null && <>
+            <div className="mt-5 rounded-2xl bg-[#111311] p-4"><p className="text-xs uppercase tracking-[0.16em] text-[#8e968a]">Current balance</p><p className="mt-1 font-['Space_Grotesk'] text-3xl font-bold text-[#d9ed7a]">${balance.toLocaleString()}</p></div>
+            {isManager && <div className="mt-5" aria-label={`${player.username} balance adjustment`}>
+              <label className="block text-sm font-medium text-white" htmlFor="balance-adjustment-amount">Amount</label>
+              <div className="relative mt-2">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[#a5aaa1]">$</span>
+                <input id="balance-adjustment-amount" className="w-full rounded-xl border border-white/10 bg-[#111311] py-3 pl-8 pr-3 font-['Space_Grotesk'] text-lg text-white outline-none focus:border-[#b7d334]" type="number" min="1" max="2147483647" step="1" inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value)} disabled={Boolean(processingAction)} />
+              </div>
+              <div className="mt-3 flex gap-3">
+                <button className="ghost-button flex-1 justify-center" type="button" onClick={() => { void handleBalanceChange('add') }} disabled={Boolean(processingAction) || isLoading || !amount}>
+                  {processingAction === 'add' ? <LoaderCircle size={17} className="animate-spin" /> : <Plus size={17} />} Add Money
+                </button>
+                <button className="ghost-button flex-1 justify-center" type="button" onClick={() => { void handleBalanceChange('remove') }} disabled={Boolean(processingAction) || isLoading || !amount}>
+                  {processingAction === 'remove' ? <LoaderCircle size={17} className="animate-spin" /> : <Minus size={17} />} Remove Money
+                </button>
+              </div>
             </div>}
           </>}
           {(errorMessage || !player.id) && <div className="form-error mt-4" role="alert"><AlertTriangle size={16} strokeWidth={2.3} /><span>{errorMessage ?? 'Player details are unavailable until the lobby provides a user ID.'}</span></div>}

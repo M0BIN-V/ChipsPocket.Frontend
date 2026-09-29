@@ -2,12 +2,12 @@ import { apiClient } from './client'
 import type { GetJoinTokenResponse, JoinResponse, MemberResponse, TableInfoResponse } from '../features/tables/table.types'
 
 export async function getTableJoinToken(tableId: string): Promise<string> {
-  const response = await apiClient.get<GetJoinTokenResponse>(`/api/tables/members/${encodeURIComponent(tableId)}/join-token`)
+  const response = await apiClient.get<GetJoinTokenResponse>(`/api/tables/${encodeURIComponent(tableId)}/members/join-token`)
   return response.data.token
 }
 
 export async function getTableMembers(tableId: string): Promise<MemberResponse[]> {
-  const response = await apiClient.get<MemberResponse[]>(`/api/tables/members/${encodeURIComponent(tableId)}`)
+  const response = await apiClient.get<MemberResponse[]>(`/api/tables/${encodeURIComponent(tableId)}/members`)
   return response.data
 }
 

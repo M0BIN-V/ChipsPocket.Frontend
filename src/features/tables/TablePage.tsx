@@ -4,7 +4,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { AlertTriangle, ArrowLeft, Club, Crown, Diamond, Heart, LoaderCircle, Plus, Share2, Spade, Users, X } from 'lucide-react'
 import { getMe } from '../../api/auth'
-import { getUserStack } from '../../api/buyIn'
+import { getMemberBalance } from '../../api/balance'
 import { createHand } from '../../api/hands'
 import { claimTableSeat, getTableInfo, getTableJoinToken, getTableMembers, releaseTableSeat } from '../../api/tableLobby'
 import { useTableRealtime } from '../../realtime/useTableRealtime'
@@ -73,8 +73,8 @@ export function TablePage() {
         ? currentUsers
         : [...currentUsers, member])
       if (tableId) {
-        void getUserStack(tableId, member.id).then((stack) => {
-          setMemberBalances((currentBalances) => ({ ...currentBalances, [member.id]: stack.totalValue }))
+        void getMemberBalance(tableId, member.id).then((balance) => {
+          setMemberBalances((currentBalances) => ({ ...currentBalances, [member.id]: balance }))
         }).catch(() => {})
       }
       void loadMembers()
@@ -205,7 +205,7 @@ export function TablePage() {
     setLobbyError(null)
     getTableMembers(tableId).then(async (users) => {
       setLobbyUsers(users)
-      const balanceResults = await Promise.allSettled(users.map(async (user) => [user.id, (await getUserStack(tableId, user.id)).totalValue] as const))
+      const balanceResults = await Promise.allSettled(users.map(async (user) => [user.id, await getMemberBalance(tableId, user.id)] as const))
       const balances = Object.fromEntries(balanceResults
         .filter((result): result is PromiseFulfilledResult<readonly [string, number]> => result.status === 'fulfilled')
         .map((result) => result.value))
@@ -226,7 +226,7 @@ export function TablePage() {
     try {
       const users = await getTableMembers(tableId ?? '')
       setLobbyUsers(users)
-      const balanceResults = await Promise.allSettled(users.map(async (user) => [user.id, (await getUserStack(tableId ?? '', user.id)).totalValue] as const))
+      const balanceResults = await Promise.allSettled(users.map(async (user) => [user.id, await getMemberBalance(tableId ?? '', user.id)] as const))
       const balances = Object.fromEntries(balanceResults
         .filter((result): result is PromiseFulfilledResult<readonly [string, number]> => result.status === 'fulfilled')
         .map((result) => result.value))
@@ -501,7 +501,7 @@ export function TablePage() {
 
       {seatActionError && <p className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-[#e27350]/30 bg-[#e27350]/10 px-4 py-3 text-center text-sm text-[#ffad93]" role="alert">{seatActionError}</p>}
       {shareError && <p className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-[#e27350]/30 bg-[#e27350]/10 px-4 py-3 text-center text-sm text-[#ffad93]" role="alert">{shareError}</p>}
-      {selectedPlayer && tableId && <PlayerDetailsModal key={selectedPlayer.id ?? selectedPlayer.username} tableId={tableId} player={{ ...selectedPlayer, id: selectedPlayer.id ?? (selectedPlayer.username === currentUserName ? currentUserId ?? undefined : undefined) }} isManager={isManager} onClose={() => setSelectedPlayer(null)} />}
+      {selectedPlayer && tableId && <PlayerDetailsModal key={selectedPlayer.id ?? selectedPlayer.username} tableId={tableId} player={{ ...selectedPlayer, id: selectedPlayer.id ?? (selectedPlayer.username === currentUserName ? currentUserId ?? undefined : undefined) }} isManager={isManager} onBalanceChange={(memberId, balance) => setMemberBalances((currentBalances) => ({ ...currentBalances, [memberId]: balance }))} onClose={() => setSelectedPlayer(null)} />}
     </main>
   )
 }

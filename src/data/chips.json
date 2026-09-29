@@ -1,0 +1,14 @@
+[
+  { "name": "White", "picture": "white-chip.png", "value": 1 },
+  { "name": "Yellow", "picture": "yellow-chip.png", "value": 2 },
+  { "name": "Red", "picture": "red-chip.png", "value": 5 },
+  { "name": "Blue", "picture": "blue-chip.png", "value": 10 },
+  { "name": "Grey", "picture": "grey-chip.png", "value": 20 },
+  { "name": "Green", "picture": "green-chip.png", "value": 25 },
+  { "name": "Orange", "picture": "orange-chip.png", "value": 50 },
+  { "name": "Black", "picture": "black-chip.png", "value": 100 },
+  { "name": "Pink", "picture": "pink-chip.png", "value": 250 },
+  { "name": "Purple", "picture": "purple-chip.png", "value": 500 },
+  { "name": "Light Blue", "picture": "light-blue-chip.png", "value": 2000 },
+  { "name": "Brown", "picture": "brown-chip.png", "value": 5000 }
+]

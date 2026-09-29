@@ -1,5 +1,5 @@
 import type { Chip, HandState } from './hand.types'
-import type { ChipAppearance } from './table.types'
+import type { ChipDefinition } from './chipDefinitions'
 
 export interface ChipChangeService {
   change(hand: HandState, sourceChipIds: string | string[], replacements: Chip[]): HandState
@@ -20,7 +20,7 @@ export function canConfirmChipChange(sourceValue: number, selectedValue: number)
 export function getAutoFillReplacementCounts(
   sourceValue: number,
   selectedValue: number,
-  denominations: readonly Pick<ChipAppearance, 'id' | 'value'>[],
+  denominations: readonly Pick<ChipDefinition, 'id' | 'value'>[],
 ): Record<string, number> | null {
   const remainingValue = sourceValue - selectedValue
   if (!Number.isSafeInteger(remainingValue) || remainingValue < 0) return null

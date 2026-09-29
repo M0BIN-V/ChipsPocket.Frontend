@@ -1,4 +1,4 @@
-export type ChipColor = 'red' | 'green' | 'black' | 'yellow' | 'blue'
+export type ChipColor = 'red' | 'green' | 'black' | 'yellow' | 'blue' | 'white' | 'grey' | 'orange' | 'pink' | 'purple' | 'light-blue' | 'brown'
 
 export interface Chip {
   id: string

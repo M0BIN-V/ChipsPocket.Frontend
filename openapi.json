@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://192.168.146.213:7112/"
+      "url": "https://localhost:7112/"
     }
   ],
   "paths": {
@@ -19,6 +19,25 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/version": {
+      "get": {
+        "tags": [
+          "ChipsPocket.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnonymousTypeOfstring"
+                }
+              }
+            }
           }
         }
       }
@@ -289,167 +308,6 @@
         }
       }
     },
-    "/api/tables/{tableId}/buy-in": {
-      "post": {
-        "tags": [
-          "Tables"
-        ],
-        "summary": "Create a buy-in transaction",
-        "description": "Creates a buy-in transaction that transfers chips from the table shop\r\nto a user in the table players.\r\n\r\nOnly the table manager can perform a buy-in.\r\nThe destination user must currently be a member of the table.\r\nThe specified chip must exist.",
-        "parameters": [
-          {
-            "name": "tableId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BuyInRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tables/{tableId}/cash-out": {
-      "post": {
-        "tags": [
-          "Tables"
-        ],
-        "summary": "Create a cash-out transaction",
-        "description": "Creates a cash-out transaction that transfers chips\r\nfrom a user to the table shop.\r\n\r\nuser should have enough chips to cash-out, otherwise it will return a bad request.\r\n\r\nOnly the table manager can perform a cash-out.\r\nThe source user must currently be a member of the\r\ntable.\r\nThe specified chip must exist.",
-        "parameters": [
-          {
-            "name": "tableId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CashOutRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tables/{tableId}/user-stack/{userId}": {
-      "get": {
-        "tags": [
-          "User Stack"
-        ],
-        "summary": "Get a user's chip stack",
-        "description": "Returns the current chip stack of a user at a specific table.\r\n\r\nThe stack is calculated from all chip transactions associated\r\nwith the specified user and table. Chips received by the user\r\nare added to the stack, while chips sent by the user are removed.\r\n\r\nOnly chips with a positive balance are included in the response.",
-        "operationId": "GetUserStack",
-        "parameters": [
-          {
-            "name": "tableId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserStackResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/tables/my": {
       "get": {
         "tags": [
@@ -468,48 +326,6 @@
                   "items": {
                     "$ref": "#/components/schemas/GetMyTablesResponse"
                   }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tables/members/{tableId}/join-token": {
-      "get": {
-        "tags": [
-          "Tables"
-        ],
-        "summary": "Get table join token",
-        "description": "Generates a short-lived token that can be shared with other users\r\nto join the table members.",
-        "parameters": [
-          {
-            "name": "tableId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GetJoinTokenResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
                 }
               }
             }
@@ -561,7 +377,49 @@
         }
       }
     },
-    "/api/tables/members/{tableId}": {
+    "/api/tables/{tableId}/members/join-token": {
+      "get": {
+        "tags": [
+          "Tables"
+        ],
+        "summary": "Get table join token",
+        "description": "Generates a short-lived token that can be shared with other users\r\nto join the table members.",
+        "parameters": [
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetJoinTokenResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tables/{tableId}/members": {
       "get": {
         "tags": [
           "Tables"
@@ -596,7 +454,7 @@
         }
       }
     },
-    "/api/tables/members/{tableId}/members/{removeUserId}": {
+    "/api/tables/{tableId}/members/{memberId}": {
       "delete": {
         "tags": [
           "Tables"
@@ -614,7 +472,7 @@
             }
           },
           {
-            "name": "removeUserId",
+            "name": "memberId",
             "in": "path",
             "required": true,
             "schema": {
@@ -625,6 +483,181 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tables/{tableId}/members/{memberId}/balance": {
+      "post": {
+        "tags": [
+          "Balance"
+        ],
+        "summary": "Add balance to a table member",
+        "description": "Adds the specified amount to a table member's balance. Only the manager of the table can perform this operation.",
+        "operationId": "AddMemberBalance",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddBalanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Balance"
+        ],
+        "summary": "Deduct balance from a table member",
+        "description": "Deducts the specified amount from a table member's balance. Only the manager of the table can perform this operation. The member must have sufficient balance.",
+        "operationId": "DeductMemberBalance",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeductMemberBalanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Balance"
+        ],
+        "summary": "Get a table member's balance",
+        "description": "Returns the current balance of a member at the specified table.",
+        "operationId": "GetMemberBalance",
+        "parameters": [
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetMemberBalanceResponse"
+                }
+              }
+            }
           },
           "404": {
             "description": "Not Found",
@@ -689,34 +722,40 @@
           }
         }
       }
-    },
-    "/api/chips/chips": {
-      "get": {
-        "tags": [
-          "Chips"
-        ],
-        "summary": "Get chips",
-        "description": "Endpoints managing poker chips.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ViewChip"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
     "schemas": {
+      "AddBalanceRequest": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "AnonymousTypeOfstring": {
+        "required": [
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "AuthResponse": {
         "required": [
           "accessToken",
@@ -730,56 +769,6 @@
           "expiresAt": {
             "type": "string",
             "format": "date-time"
-          }
-        }
-      },
-      "BuyInRequest": {
-        "required": [
-          "destinationUserId",
-          "chipId",
-          "chipCount"
-        ],
-        "type": "object",
-        "properties": {
-          "destinationUserId": {
-            "type": "string"
-          },
-          "chipId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "chipCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          }
-        }
-      },
-      "CashOutRequest": {
-        "required": [
-          "sourceUserId",
-          "chipId",
-          "chipCount"
-        ],
-        "type": "object",
-        "properties": {
-          "sourceUserId": {
-            "type": "string"
-          },
-          "chipId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "chipCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
           }
         }
       },
@@ -824,6 +813,22 @@
           }
         }
       },
+      "DeductMemberBalanceRequest": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "GetJoinTokenResponse": {
         "required": [
           "token"
@@ -832,6 +837,22 @@
         "properties": {
           "token": {
             "type": "string"
+          }
+        }
+      },
+      "GetMemberBalanceResponse": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -993,71 +1014,6 @@
           "Finished"
         ]
       },
-      "UserStackChipResponse": {
-        "required": [
-          "chipId",
-          "name",
-          "picture",
-          "value",
-          "count"
-        ],
-        "type": "object",
-        "properties": {
-          "chipId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "picture": {
-            "type": "string"
-          },
-          "value": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "count": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          }
-        }
-      },
-      "UserStackResponse": {
-        "required": [
-          "userId",
-          "totalValue",
-          "chips"
-        ],
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "string"
-          },
-          "totalValue": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "chips": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/UserStackChipResponse"
-            }
-          }
-        }
-      },
       "ViewActiveHandDto": {
         "required": [
           "tableId",
@@ -1095,35 +1051,6 @@
           },
           "waitingForActionDto": {
             "$ref": "#/components/schemas/WaitingForActionDto"
-          }
-        }
-      },
-      "ViewChip": {
-        "required": [
-          "chipId",
-          "name",
-          "value",
-          "picture"
-        ],
-        "type": "object",
-        "properties": {
-          "chipId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "value": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "picture": {
-            "type": "string"
           }
         }
       },
@@ -1273,19 +1200,19 @@
       "name": "Realtime"
     },
     {
+      "name": "ChipsPocket.Api"
+    },
+    {
       "name": "Authentication"
     },
     {
       "name": "Tables"
     },
     {
-      "name": "User Stack"
+      "name": "Balance"
     },
     {
       "name": "hands"
-    },
-    {
-      "name": "Chips"
     }
   ]
 }

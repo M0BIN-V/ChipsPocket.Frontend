@@ -3,13 +3,12 @@ import { ArrowLeft, ArrowLeftRight, LoaderCircle, Minus, Plus, Sparkles, Undo2, 
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getMe } from '../../api/auth'
-import { getUserStack } from '../../api/buyIn'
+import { getMemberBalance } from '../../api/balance'
 import { mockHandService } from '../../api/handService'
-import { chipAppearanceService } from './chipAppearanceService'
+import { chipDefinitions, getChipsForAmount } from './chipDefinitions'
 import { canAddReplacementChip, canConfirmChipChange, getAutoFillReplacementCounts, getChipValueTotal, mockChipChangeService } from './chipChangeService'
 import { getAvailableAction } from './handAction'
 import type { Chip, ChipColor, ChipStack, HandPlayer, HandState } from './hand.types'
-import type { ChipAppearance, UserStackResponse } from './table.types'
 
 const STACK_SNAP_DISTANCE = 0.06
 const CHIP_HEIGHT = 0.9
@@ -63,37 +62,10 @@ function myContribution(stacks: ChipStack[]) {
   return stacks.reduce((total, stack) => total + stack.chips.reduce((stackTotal, chip) => stackTotal + (chip.isMine ? chip.value : 0), 0), 0)
 }
 
-function chipColor(name: string, picture: string): ChipColor {
-  const source = `${name} ${picture}`.toLowerCase()
-  if (source.includes('red')) return 'red'
-  if (source.includes('green')) return 'green'
-  if (source.includes('yellow')) return 'yellow'
-  if (source.includes('blue')) return 'blue'
-  return 'black'
-}
-
-function chipPicture(name: string, picture: string, color: ChipColor): string {
-  if (/^(https?:|data:|\/)/i.test(picture)) return picture
-  const source = (picture || name).toLowerCase().replace(/\s+/g, '-')
-  return `/${source.includes('chip') ? source : `${source || color}-chip`}.png`
-}
-
-function buildPlayerChips(stack: UserStackResponse): Chip[] {
-  return stack.chips.flatMap((stackChip) => Array.from({ length: stackChip.count }, (_, index) => ({
-    id: `${stackChip.chipId}-${index}`,
-    color: chipColor(stackChip.name, stackChip.picture),
-    value: stackChip.value,
-    picture: chipPicture(stackChip.name, stackChip.picture, chipColor(stackChip.name, stackChip.picture)),
-    isMine: true,
-  })))
-}
-
 export function ActiveHandPage() {
   const navigate = useNavigate()
   const { tableId, handId } = useParams<{ tableId: string; handId: string }>()
   const [hand, setHand] = useState<HandState | null>(null)
-  const [chipAppearances, setChipAppearances] = useState<ChipAppearance[]>([])
-  const [chipAppearancesError, setChipAppearancesError] = useState(false)
   const [isPlayersOpen, setIsPlayersOpen] = useState(false)
   const [chipMenu, setChipMenu] = useState<ChipMenuState | null>(null)
   const [selectedDenominations, setSelectedDenominations] = useState<Record<string, number>>({})
@@ -105,16 +77,6 @@ export function ActiveHandPage() {
   const potRef = useRef<HTMLDivElement>(null)
   const changeZoneRef = useRef<HTMLButtonElement | null>(null)
   const longPressRef = useRef<LongPressState | null>(null)
-
-  useEffect(() => {
-    let mounted = true
-    void chipAppearanceService.getAll().then((appearances) => {
-      if (mounted) setChipAppearances(appearances)
-    }).catch(() => {
-      if (mounted) setChipAppearancesError(true)
-    })
-    return () => { mounted = false }
-  }, [])
 
   useEffect(() => {
     function dismissMenu(event: PointerEvent) {
@@ -146,12 +108,12 @@ export function ActiveHandPage() {
       if (!mounted) return
       try {
         const user = await getMe()
-        const userStack = await getUserStack(tableId, user.id)
-        const chips = buildPlayerChips(userStack)
-        setHand({ ...state, myStack: chips.length > 0 ? [{ id: 'user-stack', chips, position: { x: 0.5, y: 0.76 } }] : [] })
+        const balance = await getMemberBalance(tableId, user.id)
+        const chips = getChipsForAmount(balance)
+        setHand({ ...state, myRemainingStack: balance, myStack: chips.length > 0 ? [{ id: 'user-stack', chips, position: { x: 0.5, y: 0.76 } }] : [] })
       } catch {
         setHand(state)
-        setSubmitError('Unable to load your chips.')
+        setSubmitError('Unable to load your balance.')
       }
     })
     return () => { mounted = false }
@@ -334,9 +296,9 @@ export function ActiveHandPage() {
     return groups
   }, [])
   const menuAppearances = menuChips.length > 0
-    ? chipAppearances.filter((appearance) => appearance.value > 0 && appearance.value <= sourceTotal).sort((first, second) => second.value - first.value)
+    ? chipDefinitions.filter((appearance) => appearance.value > 0 && appearance.value <= sourceTotal).sort((first, second) => second.value - first.value)
     : []
-  const selectedTotal = chipAppearances.reduce((total, appearance) => total + appearance.value * (selectedDenominations[appearance.id] ?? 0), 0)
+  const selectedTotal = chipDefinitions.reduce((total, appearance) => total + appearance.value * (selectedDenominations[appearance.id] ?? 0), 0)
   const remainingValue = sourceTotal - selectedTotal
   const autoFillCounts = getAutoFillReplacementCounts(sourceTotal, selectedTotal, menuAppearances)
 
@@ -427,13 +389,13 @@ export function ActiveHandPage() {
 
   function confirmChipChange() {
     if (!hand || !chipMenu) return
-    const replacements = chipAppearances.flatMap((appearance) => Array.from(
+    const replacements = chipDefinitions.flatMap((appearance) => Array.from(
       { length: selectedDenominations[appearance.id] ?? 0 },
       () => ({
         id: `changed-${crypto.randomUUID()}`,
-        color: chipColor(appearance.name, appearance.picture),
+        color: appearance.name.toLowerCase().replace(/\s+/g, '-') as ChipColor,
         value: appearance.value,
-        picture: chipPicture(appearance.name, appearance.picture, chipColor(appearance.name, appearance.picture)),
+        picture: appearance.picture,
         isMine: true,
       }),
     ))
@@ -671,7 +633,7 @@ export function ActiveHandPage() {
               </button>
             </div>
             <div className="chip-change-denominations" aria-label="Available denominations">
-              {chipAppearancesError ? <p className="chip-change-empty">Chip denominations could not be loaded.</p> : menuAppearances.length === 0 ? <p className="chip-change-empty">No replacement denominations available.</p> : menuAppearances.map((appearance) => {
+              {menuAppearances.length === 0 ? <p className="chip-change-empty">No replacement denominations available.</p> : menuAppearances.map((appearance) => {
                 const count = selectedDenominations[appearance.id] ?? 0
                 const disabled = !canAddReplacementChip(sourceTotal, selectedTotal, appearance.value)
                 return <button
@@ -682,7 +644,7 @@ export function ActiveHandPage() {
                   aria-label={`Add ${money(appearance.value)} chip`}
                   onClick={() => setSelectedDenominations((current) => ({ ...current, [appearance.id]: (current[appearance.id] ?? 0) + 1 }))}
                 >
-                  <img src={chipPicture(appearance.name, appearance.picture, chipColor(appearance.name, appearance.picture))} alt="" />
+                  <img src={appearance.picture} alt="" />
                   <span>{money(appearance.value)}</span>
                   <Plus size={15} />
                   {count > 0 && <b>{count}</b>}
@@ -692,7 +654,7 @@ export function ActiveHandPage() {
             <div className="chip-change-selected">
               <span className="chip-change-label">Replacement chips</span>
               {menuAppearances.filter((appearance) => (selectedDenominations[appearance.id] ?? 0) > 0).map((appearance) => <div className="chip-selected-row" key={appearance.id}>
-                <img src={chipPicture(appearance.name, appearance.picture, chipColor(appearance.name, appearance.picture))} alt="" />
+                <img src={appearance.picture} alt="" />
                 <span>{money(appearance.value)} × {selectedDenominations[appearance.id]}</span>
                 <button className="chip-remove-button" type="button" aria-label={`Remove one ${money(appearance.value)} chip`} onClick={() => setSelectedDenominations((current) => {
                   const nextCount = (current[appearance.id] ?? 0) - 1
