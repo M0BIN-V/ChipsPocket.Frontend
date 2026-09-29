@@ -272,6 +272,17 @@ img, video, svg { display: block; max-width: 100%; }
   gap: 20px;
 }
 
+.version-info {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  padding-bottom: max(4px, env(safe-area-inset-bottom));
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
 .active-hand-shell {
   display: flex;
   width: min(100%, 920px);

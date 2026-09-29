@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { getMe } from '../../api/auth'
 import { authStorage } from '../../api/authStorage'
+import { VersionInfo } from '../../components/VersionInfo'
 import type { MeResponse } from '../auth/auth.types'
 
 export function HomePage() {
@@ -139,6 +140,8 @@ export function HomePage() {
             </button>
           </div>
         </section>
+
+        <VersionInfo />
       </div>
 
       {isShareSheetOpen && (
