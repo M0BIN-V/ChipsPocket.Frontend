@@ -22,5 +22,5 @@ export async function addMemberBalance(tableId: string, memberId: string, reques
 }
 
 export async function deductMemberBalance(tableId: string, memberId: string, request: BalanceRequest): Promise<void> {
-  await apiClient.delete(balancePath(tableId, memberId), { data: request })
+  await apiClient.delete(balancePath(tableId, memberId), { params: { value: request.value } })
 }

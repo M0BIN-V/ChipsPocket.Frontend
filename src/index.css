@@ -330,13 +330,26 @@ img, video, svg { display: block; max-width: 100%; }
   font-weight: 700;
 }
 
+.hand-table-layout {
+  position: relative;
+  width: 100%;
+  padding: 3.5rem 3.25rem;
+}
+
+.hand-player-rail {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  pointer-events: none;
+}
+
 .active-table {
   position: relative;
   isolation: isolate;
   user-select: none;
   width: 100%;
   min-height: min(74vh, 690px);
-  margin: 14px auto 4px;
+  margin: 0 auto;
   overflow: hidden;
   border: 10px solid #1f2a22;
   border-radius: 42% / 19%;
@@ -344,6 +357,88 @@ img, video, svg { display: block; max-width: 100%; }
   box-shadow: inset 0 0 0 2px rgba(174, 192, 127, 0.55), inset 0 12px 20px rgba(6, 16, 11, 0.46), 0 18px 30px rgba(0, 0, 0, 0.28);
   touch-action: pan-y;
 }
+
+.hand-player-seat {
+  position: absolute;
+  display: grid;
+  width: 3.25rem;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(219, 226, 194, 0.2);
+  border-radius: 50%;
+  background: rgba(13, 24, 17, 0.88);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.hand-player-balance {
+  position: absolute;
+  z-index: 2;
+  bottom: calc(100% + 0.2rem);
+  left: 50%;
+  padding: 0.12rem 0.3rem;
+  transform: translateX(-50%);
+  border: 1px solid rgba(219, 226, 194, 0.18);
+  border-radius: 0.35rem;
+  background: rgba(10, 17, 12, 0.92);
+  color: #f1f4e5;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.hand-player-pot {
+  position: absolute;
+  z-index: 2;
+  padding: 0.12rem 0.3rem;
+  border: 1px solid rgba(217, 237, 122, 0.4);
+  border-radius: 0.35rem;
+  background: rgba(22, 40, 27, 0.96);
+  color: #d9ed7a;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.hand-player-avatar {
+  display: grid;
+  width: 2.75rem;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(217, 237, 122, 0.4);
+  border-radius: 50%;
+  background: rgba(217, 237, 122, 0.12);
+  color: #e2efaa;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.hand-player-current { border-color: #d9ed7a; box-shadow: 0 0 0 2px rgba(217, 237, 122, 0.2), 0 4px 12px rgba(0, 0, 0, 0.3); }
+.hand-player-current .hand-player-avatar { background: #d9ed7a; color: #1c2b1f; }
+.hand-player-self:not(.hand-player-current) { border-color: #f0c674; box-shadow: 0 0 0 2px rgba(240, 198, 116, 0.2), 0 4px 12px rgba(0, 0, 0, 0.3); }
+.hand-player-self:not(.hand-player-current) .hand-player-avatar { border-color: rgba(240, 198, 116, 0.55); background: rgba(240, 198, 116, 0.14); color: #f6e1a9; }
+.hand-seat-1 { top: 0; left: 50%; transform: translateX(-50%); }
+.hand-seat-2 { top: 0; left: 25%; transform: translateX(-50%); }
+.hand-seat-3 { top: 30%; left: 0; transform: translateY(-50%); }
+.hand-seat-4 { top: 70%; left: 0; transform: translateY(-50%); }
+.hand-seat-5 { bottom: 0; left: 25%; transform: translateX(-50%); }
+.hand-seat-6 { bottom: 0; left: 50%; transform: translateX(-50%); }
+.hand-seat-7 { bottom: 0; left: 75%; transform: translateX(-50%); }
+.hand-seat-8 { top: 70%; right: 0; transform: translateY(-50%); }
+.hand-seat-9 { top: 30%; right: 0; transform: translateY(-50%); }
+.hand-seat-10 { top: 0; left: 75%; transform: translateX(-50%); }
+.hand-seat-1 .hand-player-pot, .hand-seat-2 .hand-player-pot, .hand-seat-10 .hand-player-pot { top: calc(100% + 0.2rem); left: 50%; transform: translateX(-50%); }
+.hand-seat-3 .hand-player-pot, .hand-seat-4 .hand-player-pot { top: 50%; left: calc(100% + 0.2rem); transform: translateY(-50%); }
+.hand-seat-5 .hand-player-pot, .hand-seat-6 .hand-player-pot, .hand-seat-7 .hand-player-pot { bottom: calc(100% + 0.2rem); left: 50%; transform: translateX(-50%); }
+.hand-seat-8 .hand-player-pot, .hand-seat-9 .hand-player-pot { top: 50%; right: calc(100% + 0.2rem); transform: translateY(-50%); }
+.hand-seat-5 .hand-player-balance, .hand-seat-6 .hand-player-balance, .hand-seat-7 .hand-player-balance { bottom: auto; top: calc(100% + 0.2rem); }
+.hand-seat-3 .hand-player-balance, .hand-seat-4 .hand-player-balance { bottom: auto; top: 50%; right: calc(100% + 0.2rem); left: auto; transform: translateY(-50%); }
+.hand-seat-8 .hand-player-balance, .hand-seat-9 .hand-player-balance { bottom: auto; top: 50%; left: calc(100% + 0.2rem); transform: translateY(-50%); }
 
 .pot-drop-zone {
   position: absolute;
@@ -647,7 +742,7 @@ img, video, svg { display: block; max-width: 100%; }
 
 @media (max-width: 520px) {
   .active-hand-shell { padding-inline: 10px; }
-  .active-table { min-height: 72vh; border-width: 7px; border-radius: 36% / 14%; }
+  .active-table { min-height: min(72vh, calc((100vw - 8rem) * 1.65)); border-width: 7px; border-radius: 36% / 14%; }
   .pot-drop-zone { width: 75%; height: 28%; }
   .chip-stack { transform: translate(-50%, -45%) scale(0.86); }
   .table-instruction { font-size: 0.61rem; }

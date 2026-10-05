@@ -460,7 +460,7 @@
           "Tables"
         ],
         "summary": "Remove a user from a table",
-        "description": "Removes a user from the specified table.\r\n\r\nA table manager can remove any user from the table except themselves.\r\nA regular user can only remove themselves from the table players.\r\n\r\nIf the user has a claimed seat at the table, the seat is released\r\nwhen the user is removed from the table players.\r\n\r\nThe operation requires authentication and the specified table must exist.",
+        "description": "Removes a user from the specified table.\r\n\r\nA table managerService can remove any user from the table except themselves.\r\nA regular user can only remove themselves from the table players.\r\n\r\nIf the user has a claimed seat at the table, the seat is released\r\nwhen the user is removed from the table players.\r\n\r\nThe operation requires authentication and the specified table must exist.",
         "parameters": [
           {
             "name": "tableId",
@@ -503,7 +503,7 @@
           "Balance"
         ],
         "summary": "Add balance to a table member",
-        "description": "Adds the specified amount to a table member's balance. Only the manager of the table can perform this operation.",
+        "description": "Adds the specified amount to a table member's balance. Only the managerService of the table can perform this operation.",
         "operationId": "AddMemberBalance",
         "parameters": [
           {
@@ -565,9 +565,22 @@
           "Balance"
         ],
         "summary": "Deduct balance from a table member",
-        "description": "Deducts the specified amount from a table member's balance. Only the manager of the table can perform this operation. The member must have sufficient balance.",
+        "description": "Deducts the specified amount from a table member's balance. Only the managerService of the table can perform this operation. The member must have sufficient balance.",
         "operationId": "DeductMemberBalance",
         "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
           {
             "name": "memberId",
             "in": "path",
@@ -586,16 +599,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DeductMemberBalanceRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "description": "OK"
@@ -603,9 +606,9 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                  "type": "string"
                 }
               }
             }
@@ -695,7 +698,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ViewCreateHandDto"
+                  "$ref": "#/components/schemas/ViewCreatedHandDto"
                 }
               }
             }
@@ -775,21 +778,12 @@
       "CreateTableRequest": {
         "required": [
           "tableName",
-          "bigBlindAmount",
           "smallBlindAmount"
         ],
         "type": "object",
         "properties": {
           "tableName": {
             "type": "string"
-          },
-          "bigBlindAmount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
           },
           "smallBlindAmount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -810,22 +804,6 @@
           "id": {
             "type": "string",
             "format": "uuid"
-          }
-        }
-      },
-      "DeductMemberBalanceRequest": {
-        "required": [
-          "value"
-        ],
-        "type": "object",
-        "properties": {
-          "value": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
           }
         }
       },
@@ -1005,7 +983,6 @@
       },
       "Street": {
         "enum": [
-          "Pending",
           "PreFlop",
           "Flop",
           "Turn",
@@ -1021,8 +998,7 @@
           "dealerSeatId",
           "smallBlindSeatId",
           "bigBlindSeatId",
-          "currentStreet",
-          "waitingForActionDto"
+          "currentStreet"
         ],
         "type": "object",
         "properties": {
@@ -1048,13 +1024,10 @@
           },
           "currentStreet": {
             "$ref": "#/components/schemas/Street"
-          },
-          "waitingForActionDto": {
-            "$ref": "#/components/schemas/WaitingForActionDto"
           }
         }
       },
-      "ViewCreateHandDto": {
+      "ViewCreatedHandDto": {
         "required": [
           "handId",
           "dealerSeatId",
@@ -1161,29 +1134,6 @@
             "type": "string"
           }
         }
-      },
-      "WaitingForActionDto": {
-        "required": [
-          "seatId",
-          "type"
-        ],
-        "type": "object",
-        "properties": {
-          "seatId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "type": {
-            "$ref": "#/components/schemas/WaitingForActionType"
-          }
-        }
-      },
-      "WaitingForActionType": {
-        "enum": [
-          "SmallBlind",
-          "BigBlind",
-          "BetAction"
-        ]
       }
     },
     "securitySchemes": {

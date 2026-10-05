@@ -20,6 +20,7 @@ export interface HandPlayer {
   seat: number
   role: 'Dealer' | 'Small Blind' | 'Big Blind' | 'Player'
   remainingStack: number
+  roundContribution: number
 }
 
 export interface HandState {

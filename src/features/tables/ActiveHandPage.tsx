@@ -287,6 +287,8 @@ export function ActiveHandPage() {
     ? `${action} ${money(selectedAmount)}`
     : action
   const isMyTurn = hand.currentPlayerId === hand.myPlayerId
+  const myPlayer = hand.players.find((player) => player.id === hand.myPlayerId)
+  const mySeat = myPlayer?.seat ?? 4
   const menuChips = chipMenu ? hand.myStack.flatMap((stack) => stack.chips).filter((chip) => chipMenu.sourceChipIds.includes(chip.id)) : []
   const sourceTotal = getChipValueTotal(menuChips)
   const sourceGroups = menuChips.reduce<{ chip: Chip; count: number }[]>((groups, chip) => {
@@ -575,7 +577,15 @@ export function ActiveHandPage() {
         <button className="players-button" type="button" onClick={() => setIsPlayersOpen(true)}><Users size={17} /> Players</button>
       </header>
 
-      <div className="active-table" ref={boardRef} onDoubleClick={handleTableDoubleClick}>
+      <div className="hand-table-layout">
+        <div className="hand-player-rail" aria-label="Players around the table">
+          {hand.players.filter((player) => player.id !== hand.myPlayerId).map((player) => {
+            const seatPosition = ((player.seat - mySeat + 15) % 10) + 1
+            return <HandPlayerProfile key={player.id} player={player} currentPlayerId={hand.currentPlayerId} seatPosition={seatPosition} />
+          })}
+          {myPlayer && <HandPlayerProfile player={myPlayer} currentPlayerId={hand.currentPlayerId} seatPosition={6} isSelf />}
+        </div>
+        <div className="active-table" ref={boardRef} onDoubleClick={handleTableDoubleClick}>
         <div className="pot-value"><span>POT</span><strong>{money(currentPot)}</strong></div>
         <div className={`pot-drop-zone ${drag ? 'pot-drop-active' : ''}`} ref={potRef}>
           <div className="pot-chips">{renderStacks(hand.potChips, 'pot')}</div>
@@ -671,6 +681,7 @@ export function ActiveHandPage() {
         </div>, document.body)}
         <div className="table-instruction">{isMyTurn ? 'Move chips to the pot to choose your action' : `Waiting for ${hand.players.find((player) => player.id === hand.currentPlayerId)?.name ?? 'another player'}`}</div>
       </div>
+      </div>
 
       {returningChips.length > 0 && createPortal(returningChips.map(({ chip, startX, startY, deltaX, deltaY, delay }) => (
         <span
@@ -718,6 +729,20 @@ export function ActiveHandPage() {
       {isPlayersOpen && <PlayersPanel players={hand.players} onClose={() => setIsPlayersOpen(false)} />}
     </main>
   )
+}
+
+function HandPlayerProfile({ player, currentPlayerId, seatPosition, isSelf = false }: { player: HandPlayer; currentPlayerId: string; seatPosition: number; isSelf?: boolean }) {
+  return <div
+    className={`hand-player-seat hand-seat-${seatPosition} ${player.id === currentPlayerId ? 'hand-player-current' : ''} ${isSelf ? 'hand-player-self' : ''}`}
+    role="group"
+    aria-label={`${player.name}${isSelf ? ', you' : ''}, seat ${player.seat}, ${player.role}, ${money(player.remainingStack)} remaining, ${money(player.roundContribution)} contributed this round${player.id === currentPlayerId ? ', acting now' : ''}`}
+  >
+    {!isSelf && <>
+      <span className="hand-player-balance" aria-hidden="true">{money(player.remainingStack)}</span>
+      <span className="hand-player-pot" aria-hidden="true">{money(player.roundContribution)}</span>
+    </>}
+    <span className="hand-player-avatar" aria-hidden="true">{player.name.slice(0, 2).toUpperCase()}</span>
+  </div>
 }
 
 function PlayersPanel({ players, onClose }: { players: HandPlayer[]; onClose: () => void }) {
