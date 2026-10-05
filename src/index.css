@@ -491,32 +491,34 @@ img, video, svg { display: block; max-width: 100%; }
 .player-chips { z-index: 1; }
 
 .change-drop-zone {
-  position: relative;
+  position: fixed;
   z-index: 20;
+  left: 50%;
+  bottom: calc(58px + max(10px, env(safe-area-inset-bottom)) + 16px);
   display: flex;
   width: min(100%, 360px);
   justify-content: center;
   padding: 0;
-  margin: 10px auto 0;
+  margin: 0;
   border: 0;
   background: transparent;
   opacity: 0;
   max-height: 0;
   overflow: hidden;
-  transform: translateY(12px);
-  transition: opacity 180ms ease, transform 180ms ease, max-height 180ms ease, margin-top 180ms ease;
+  transform: translate(-50%, 12px);
+  transition: opacity 180ms ease, transform 180ms ease, max-height 180ms ease;
   pointer-events: none;
 }
 
 .change-drop-zone.visible {
   opacity: 1;
   max-height: 120px;
-  transform: translateY(0);
+  transform: translate(-50%, 0);
   pointer-events: auto;
 }
 
 .change-drop-zone.active {
-  transform: translateY(0) scale(1.02);
+  transform: translate(-50%, 0) scale(1.02);
 }
 
 .change-drop-zone-inner {
