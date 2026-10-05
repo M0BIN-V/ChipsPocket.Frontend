@@ -586,7 +586,7 @@ export function ActiveHandPage() {
           })}
         </div>
         <div className="active-table" ref={boardRef} onDoubleClick={handleTableDoubleClick}>
-        <div className="pot-value"><span>POT</span><strong>{money(currentPot)}</strong></div>
+        <div className="pot-value"><strong>{money(currentPot)}</strong></div>
         <div className={`pot-drop-zone ${drag ? 'pot-drop-active' : ''}`} ref={potRef}>
           <div className="pot-chips">{renderStacks(hand.potChips, 'pot')}</div>
         </div>

@@ -286,9 +286,11 @@ img, video, svg { display: block; max-width: 100%; }
 .active-hand-shell {
   display: flex;
   width: min(100%, 920px);
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   margin: 0 auto;
-  padding: 18px 14px max(20px, env(safe-area-inset-bottom));
+  padding: max(12px, env(safe-area-inset-top)) 14px max(10px, env(safe-area-inset-bottom));
   flex-direction: column;
 }
 
@@ -332,6 +334,8 @@ img, video, svg { display: block; max-width: 100%; }
 
 .hand-table-layout {
   position: relative;
+  flex: 1 1 0%;
+  min-height: 0;
   width: 100%;
   padding: 1.65rem;
 }
@@ -348,7 +352,8 @@ img, video, svg { display: block; max-width: 100%; }
   isolation: isolate;
   user-select: none;
   width: 100%;
-  min-height: min(74vh, 690px);
+  height: 100%;
+  min-height: 0;
   margin: 0 auto;
   overflow: hidden;
   border: 10px solid #1f2a22;
@@ -452,22 +457,15 @@ img, video, svg { display: block; max-width: 100%; }
 
 .pot-value {
   position: absolute;
-  top: 5%;
+  top: 13%;
   left: 50%;
   z-index: 3;
   display: flex;
-  align-items: baseline;
-  gap: 10px;
-  transform: translateX(-50%);
+  align-items: center;
+  padding: 0.08rem 0.5rem;
+  transform: translate(-50%, -50%);
+  border-radius: 0.35rem;
   white-space: nowrap;
-}
-
-.pot-value span {
-  color: rgba(210, 222, 185, 0.74);
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.2em;
 }
 
 .pot-value strong {
@@ -696,7 +694,7 @@ img, video, svg { display: block; max-width: 100%; }
 .chip-change-confirm { min-height: 42px; padding: 0.65rem 0.8rem; border-radius: 10px; font-size: 0.78rem; }
 .chip-change-confirm:disabled { cursor: not-allowed; opacity: 0.42; box-shadow: none; }
 
-.action-dock { width: min(100%, 560px); margin: 0 auto; }
+.action-dock { flex: 0 0 auto; width: min(100%, 560px); margin: 0 auto; }
 .action-controls { display: flex; align-items: center; gap: 8px; }
 .action-controls .action-button { flex: 1; width: auto; }
 .change-zone-active {
@@ -737,7 +735,7 @@ img, video, svg { display: block; max-width: 100%; }
 
 @media (max-width: 520px) {
   .active-hand-shell { padding-inline: 10px; }
-  .active-table { min-height: min(72vh, calc((100vw - 4.8rem) * 1.65)); border-width: 7px; border-radius: 36% / 14%; }
+  .active-table { border-width: 7px; border-radius: 36% / 14%; }
   .pot-drop-zone { width: 75%; height: 28%; }
   .chip-stack { transform: translate(-50%, -45%) scale(0.86); }
   .table-instruction { font-size: 0.61rem; }
