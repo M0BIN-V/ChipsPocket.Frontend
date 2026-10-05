@@ -333,7 +333,7 @@ img, video, svg { display: block; max-width: 100%; }
 .hand-table-layout {
   position: relative;
   width: 100%;
-  padding: 3.5rem 3.25rem;
+  padding: 1.65rem;
 }
 
 .hand-player-rail {
@@ -374,7 +374,7 @@ img, video, svg { display: block; max-width: 100%; }
 .hand-player-balance {
   position: absolute;
   z-index: 2;
-  bottom: calc(100% + 0.2rem);
+  top: calc(100% + 0.2rem);
   left: 50%;
   padding: 0.12rem 0.3rem;
   transform: translateX(-50%);
@@ -420,25 +420,20 @@ img, video, svg { display: block; max-width: 100%; }
 
 .hand-player-current { border-color: #d9ed7a; box-shadow: 0 0 0 2px rgba(217, 237, 122, 0.2), 0 4px 12px rgba(0, 0, 0, 0.3); }
 .hand-player-current .hand-player-avatar { background: #d9ed7a; color: #1c2b1f; }
-.hand-player-self:not(.hand-player-current) { border-color: #f0c674; box-shadow: 0 0 0 2px rgba(240, 198, 116, 0.2), 0 4px 12px rgba(0, 0, 0, 0.3); }
-.hand-player-self:not(.hand-player-current) .hand-player-avatar { border-color: rgba(240, 198, 116, 0.55); background: rgba(240, 198, 116, 0.14); color: #f6e1a9; }
 .hand-seat-1 { top: 0; left: 50%; transform: translateX(-50%); }
-.hand-seat-2 { top: 0; left: 25%; transform: translateX(-50%); }
-.hand-seat-3 { top: 30%; left: 0; transform: translateY(-50%); }
-.hand-seat-4 { top: 70%; left: 0; transform: translateY(-50%); }
-.hand-seat-5 { bottom: 0; left: 25%; transform: translateX(-50%); }
+.hand-seat-1 .hand-player-balance { top: 50%; right: calc(100% + 0.2rem); bottom: auto; left: auto; transform: translateY(-50%); }
+.hand-seat-2 { top: 15%; left: 0; transform: translateY(-50%); }
+.hand-seat-3 { top: 38%; left: 0; transform: translateY(-50%); }
+.hand-seat-4 { top: 62%; left: 0; transform: translateY(-50%); }
+.hand-seat-5 { top: 85%; left: 0; transform: translateY(-50%); }
 .hand-seat-6 { bottom: 0; left: 50%; transform: translateX(-50%); }
-.hand-seat-7 { bottom: 0; left: 75%; transform: translateX(-50%); }
-.hand-seat-8 { top: 70%; right: 0; transform: translateY(-50%); }
-.hand-seat-9 { top: 30%; right: 0; transform: translateY(-50%); }
-.hand-seat-10 { top: 0; left: 75%; transform: translateX(-50%); }
-.hand-seat-1 .hand-player-pot, .hand-seat-2 .hand-player-pot, .hand-seat-10 .hand-player-pot { top: calc(100% + 0.2rem); left: 50%; transform: translateX(-50%); }
-.hand-seat-3 .hand-player-pot, .hand-seat-4 .hand-player-pot { top: 50%; left: calc(100% + 0.2rem); transform: translateY(-50%); }
-.hand-seat-5 .hand-player-pot, .hand-seat-6 .hand-player-pot, .hand-seat-7 .hand-player-pot { bottom: calc(100% + 0.2rem); left: 50%; transform: translateX(-50%); }
-.hand-seat-8 .hand-player-pot, .hand-seat-9 .hand-player-pot { top: 50%; right: calc(100% + 0.2rem); transform: translateY(-50%); }
-.hand-seat-5 .hand-player-balance, .hand-seat-6 .hand-player-balance, .hand-seat-7 .hand-player-balance { bottom: auto; top: calc(100% + 0.2rem); }
-.hand-seat-3 .hand-player-balance, .hand-seat-4 .hand-player-balance { bottom: auto; top: 50%; right: calc(100% + 0.2rem); left: auto; transform: translateY(-50%); }
-.hand-seat-8 .hand-player-balance, .hand-seat-9 .hand-player-balance { bottom: auto; top: 50%; left: calc(100% + 0.2rem); transform: translateY(-50%); }
+.hand-seat-7 { top: 85%; right: 0; transform: translateY(-50%); }
+.hand-seat-8 { top: 62%; right: 0; transform: translateY(-50%); }
+.hand-seat-9 { top: 38%; right: 0; transform: translateY(-50%); }
+.hand-seat-10 { top: 15%; right: 0; transform: translateY(-50%); }
+.hand-seat-1 .hand-player-pot { top: calc(100% + 0.2rem); right: auto; left: 50%; transform: translateX(-50%); }
+.hand-seat-2 .hand-player-pot, .hand-seat-3 .hand-player-pot, .hand-seat-4 .hand-player-pot, .hand-seat-5 .hand-player-pot { top: 50%; left: calc(100% + 0.2rem); transform: translateY(-50%); }
+.hand-seat-7 .hand-player-pot, .hand-seat-8 .hand-player-pot, .hand-seat-9 .hand-player-pot, .hand-seat-10 .hand-player-pot { top: 50%; right: calc(100% + 0.2rem); transform: translateY(-50%); }
 
 .pot-drop-zone {
   position: absolute;
@@ -742,7 +737,7 @@ img, video, svg { display: block; max-width: 100%; }
 
 @media (max-width: 520px) {
   .active-hand-shell { padding-inline: 10px; }
-  .active-table { min-height: min(72vh, calc((100vw - 8rem) * 1.65)); border-width: 7px; border-radius: 36% / 14%; }
+  .active-table { min-height: min(72vh, calc((100vw - 4.8rem) * 1.65)); border-width: 7px; border-radius: 36% / 14%; }
   .pot-drop-zone { width: 75%; height: 28%; }
   .chip-stack { transform: translate(-50%, -45%) scale(0.86); }
   .table-instruction { font-size: 0.61rem; }

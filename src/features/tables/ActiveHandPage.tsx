@@ -580,10 +580,10 @@ export function ActiveHandPage() {
       <div className="hand-table-layout">
         <div className="hand-player-rail" aria-label="Players around the table">
           {hand.players.filter((player) => player.id !== hand.myPlayerId).map((player) => {
-            const seatPosition = ((player.seat - mySeat + 15) % 10) + 1
+            const seatDistance = (player.seat - mySeat + 10) % 10
+            const seatPosition = seatDistance + Number(seatDistance > 5)
             return <HandPlayerProfile key={player.id} player={player} currentPlayerId={hand.currentPlayerId} seatPosition={seatPosition} />
           })}
-          {myPlayer && <HandPlayerProfile player={myPlayer} currentPlayerId={hand.currentPlayerId} seatPosition={6} isSelf />}
         </div>
         <div className="active-table" ref={boardRef} onDoubleClick={handleTableDoubleClick}>
         <div className="pot-value"><span>POT</span><strong>{money(currentPot)}</strong></div>
@@ -731,16 +731,14 @@ export function ActiveHandPage() {
   )
 }
 
-function HandPlayerProfile({ player, currentPlayerId, seatPosition, isSelf = false }: { player: HandPlayer; currentPlayerId: string; seatPosition: number; isSelf?: boolean }) {
+function HandPlayerProfile({ player, currentPlayerId, seatPosition }: { player: HandPlayer; currentPlayerId: string; seatPosition: number }) {
   return <div
-    className={`hand-player-seat hand-seat-${seatPosition} ${player.id === currentPlayerId ? 'hand-player-current' : ''} ${isSelf ? 'hand-player-self' : ''}`}
+    className={`hand-player-seat hand-seat-${seatPosition} ${player.id === currentPlayerId ? 'hand-player-current' : ''}`}
     role="group"
-    aria-label={`${player.name}${isSelf ? ', you' : ''}, seat ${player.seat}, ${player.role}, ${money(player.remainingStack)} remaining, ${money(player.roundContribution)} contributed this round${player.id === currentPlayerId ? ', acting now' : ''}`}
+    aria-label={`${player.name}, seat ${player.seat}, ${player.role}, ${money(player.remainingStack)} remaining, ${money(player.roundContribution)} contributed this round${player.id === currentPlayerId ? ', acting now' : ''}`}
   >
-    {!isSelf && <>
-      <span className="hand-player-balance" aria-hidden="true">{money(player.remainingStack)}</span>
-      <span className="hand-player-pot" aria-hidden="true">{money(player.roundContribution)}</span>
-    </>}
+    <span className="hand-player-balance" aria-hidden="true">{money(player.remainingStack)}</span>
+    <span className="hand-player-pot" aria-hidden="true">{money(player.roundContribution)}</span>
     <span className="hand-player-avatar" aria-hidden="true">{player.name.slice(0, 2).toUpperCase()}</span>
   </div>
 }
