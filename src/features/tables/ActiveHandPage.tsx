@@ -12,6 +12,11 @@ import type { Chip, ChipColor, ChipStack, HandPlayer, HandState } from './hand.t
 
 const STACK_SNAP_DISTANCE = 0.06
 const CHIP_HEIGHT = 0.9
+const COMPRESSED_CHIP_HEIGHT = 0.3
+
+function chipSpacing(chipCount: number) {
+  return chipCount > 4 ? COMPRESSED_CHIP_HEIGHT : CHIP_HEIGHT
+}
 
 type StackSource = 'player' | 'pot'
 interface DragState {
@@ -146,9 +151,9 @@ export function ActiveHandPage() {
     const board = boardRef.current?.getBoundingClientRect()
     if (!board) return undefined
     const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-    const chipOffset = CHIP_HEIGHT * rootFontSize / board.height
     return stacks.find((stack) => {
       if (stack.id === sourceStackId) return false
+      const chipOffset = chipSpacing(stack.chips.length) * rootFontSize / board.height
       return stack.chips.some((_, index) => Math.hypot(stack.position.x - position.x, stack.position.y - index * chipOffset - position.y) < STACK_SNAP_DISTANCE)
     })
   }
@@ -238,7 +243,7 @@ export function ActiveHandPage() {
     if (!sourceStack || !board) return
     const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
     const chipSize = 4.6 * rootFontSize
-    const chipOffset = CHIP_HEIGHT * rootFontSize
+    const chipOffset = chipSpacing(sourceStack.chips.length) * rootFontSize
     const chips = sourceStack.chips.filter((chip) => currentDrag.chipIds.includes(chip.id))
     setReturningChips(chips.map((chip, index) => {
       const stackOffset = currentDrag.moveStack ? index * chipOffset : 0
@@ -450,7 +455,7 @@ export function ActiveHandPage() {
         style={{ left: drag.viewportPosition.x, top: drag.viewportPosition.y }}
       >
         {chips.map((chip, index) => (
-          <span className="drag-overlay-chip" key={`drag-overlay-${chip.id}`} style={{ bottom: `${index * CHIP_HEIGHT}rem` }}>
+          <span className="drag-overlay-chip" key={`drag-overlay-${chip.id}`} style={{ bottom: `${index * chipSpacing(chips.length)}rem` }}>
             <img src={chip.picture ?? `/${chip.color}-chip.png`} alt={`${chip.value} chip`} draggable={false} />
           </span>
         ))}
@@ -569,7 +574,7 @@ export function ActiveHandPage() {
             key={chip.id}
             data-chip-id={chip.id}
             type="button"
-            style={{ bottom: `${index * CHIP_HEIGHT}rem` }}
+            style={{ bottom: `${index * chipSpacing(chips.length)}rem` }}
             onPointerDown={(event) => handleChipPointerDown(event, source, stack, index !== chips.length - 1, chip)}
             onPointerMove={handleChipPointerMove}
             onPointerUp={clearLongPress}
