@@ -423,6 +423,29 @@ img, video, svg { display: block; max-width: 100%; }
   font-weight: 700;
 }
 
+.hand-role-badge {
+  position: absolute;
+  z-index: 3;
+  top: -0.3rem;
+  right: -0.3rem;
+  display: grid;
+  width: 1.35rem;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(10, 17, 12, 0.9);
+  border-radius: 50%;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.5rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.hand-role-dealer { background: #d9ed7a; color: #1c2b1f; }
+.hand-role-small-blind { background: #a5dcf2; color: #172a36; }
+.hand-role-big-blind { background: #ffb47f; color: #382116; }
+.hand-role-badge-self { top: 50%; right: calc(100% + 0.3rem); transform: translateY(-50%); }
+
 .hand-player-current { border-color: #d9ed7a; box-shadow: 0 0 0 2px rgba(217, 237, 122, 0.2), 0 4px 12px rgba(0, 0, 0, 0.3); }
 .hand-player-current .hand-player-avatar { background: #d9ed7a; color: #1c2b1f; }
 .hand-seat-1 { top: 0; left: 50%; transform: translateX(-50%); }
@@ -1763,4 +1786,3 @@ img, video, svg { display: block; max-width: 100%; }
   .primary-button,
   .secondary-button { min-height: 52px; }
 }
-

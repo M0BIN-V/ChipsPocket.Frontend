@@ -62,6 +62,19 @@ function myContribution(stacks: ChipStack[]) {
   return stacks.reduce((total, stack) => total + stack.chips.reduce((stackTotal, chip) => stackTotal + (chip.isMine ? chip.value : 0), 0), 0)
 }
 
+function getRoleBadge(role: HandPlayer['role']) {
+  switch (role) {
+    case 'Dealer':
+      return { label: 'D', className: 'hand-role-dealer' }
+    case 'Small Blind':
+      return { label: 'SB', className: 'hand-role-small-blind' }
+    case 'Big Blind':
+      return { label: 'BB', className: 'hand-role-big-blind' }
+    case 'Player':
+      return null
+  }
+}
+
 export function ActiveHandPage() {
   const navigate = useNavigate()
   const { tableId, handId } = useParams<{ tableId: string; handId: string }>()
@@ -289,6 +302,7 @@ export function ActiveHandPage() {
   const isMyTurn = hand.currentPlayerId === hand.myPlayerId
   const myPlayer = hand.players.find((player) => player.id === hand.myPlayerId)
   const mySeat = myPlayer?.seat ?? 4
+  const myRoleBadge = myPlayer ? getRoleBadge(myPlayer.role) : null
   const menuChips = chipMenu ? hand.myStack.flatMap((stack) => stack.chips).filter((chip) => chipMenu.sourceChipIds.includes(chip.id)) : []
   const sourceTotal = getChipValueTotal(menuChips)
   const sourceGroups = menuChips.reduce<{ chip: Chip; count: number }[]>((groups, chip) => {
@@ -591,7 +605,11 @@ export function ActiveHandPage() {
           <div className="pot-chips">{renderStacks(hand.potChips, 'pot')}</div>
         </div>
         <div className="table-watermark">CHIPSPOCKET <span>♠ ♣ ♥ ♦</span></div>
-        <div className="player-stack-label"><span>YOUR STACK</span><strong>{money(hand.myRemainingStack - selectedAmount)}</strong></div>
+        <div className="player-stack-label">
+          <span>YOUR STACK</span>
+          {myRoleBadge && <div className={`hand-role-badge hand-role-badge-self ${myRoleBadge.className}`} aria-label={myPlayer?.role}>{myRoleBadge.label}</div>}
+          <strong>{money(hand.myRemainingStack - selectedAmount)}</strong>
+        </div>
         <div className="player-chips">{renderStacks(hand.myStack, 'player')}</div>
         {chipMenu?.mode === 'actions' && menuChips.length > 0 && <div
           className="chip-change-menu chip-context-menu"
@@ -732,6 +750,7 @@ export function ActiveHandPage() {
 }
 
 function HandPlayerProfile({ player, currentPlayerId, seatPosition }: { player: HandPlayer; currentPlayerId: string; seatPosition: number }) {
+  const roleBadge = getRoleBadge(player.role)
   return <div
     className={`hand-player-seat hand-seat-${seatPosition} ${player.id === currentPlayerId ? 'hand-player-current' : ''}`}
     role="group"
@@ -740,6 +759,7 @@ function HandPlayerProfile({ player, currentPlayerId, seatPosition }: { player: 
     <span className="hand-player-balance" aria-hidden="true">{money(player.remainingStack)}</span>
     <span className="hand-player-pot" aria-hidden="true">{money(player.roundContribution)}</span>
     <span className="hand-player-avatar" aria-hidden="true">{player.name.slice(0, 2).toUpperCase()}</span>
+    {roleBadge && <span className={`hand-role-badge ${roleBadge.className}`} aria-hidden="true">{roleBadge.label}</span>}
   </div>
 }
 
