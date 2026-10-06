@@ -441,7 +441,7 @@ img, video, svg { display: block; max-width: 100%; }
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
-.hand-role-dealer { background: #d9ed7a; color: #1c2b1f; }
+.hand-role-dealer { background: #fff; color: #1c2b1f; }
 .hand-role-small-blind { background: #a5dcf2; color: #172a36; }
 .hand-role-big-blind { background: #ffb47f; color: #382116; }
 .hand-role-badge-self { top: 50%; right: calc(100% + 0.3rem); transform: translateY(-50%); }
