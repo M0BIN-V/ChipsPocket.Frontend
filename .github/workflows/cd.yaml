@@ -1,4 +1,4 @@
-name: CD - Deploy Frontend
+name: CD - Frontend Deploy to Liara
 
 on:
   push:
@@ -26,6 +26,25 @@ jobs:
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Telegram - Frontend Deploy Started
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          MESSAGE="🚀 <b>ChipsPocket Frontend Deploy Started</b>
+
+          🎨 Service: <b>Frontend</b>
+          📦 Version: <code>${{ steps.version.outputs.version }}</code>
+          🏷 Tag: <code>${GITHUB_REF_NAME}</code>
+
+          ⏳ Building and deploying frontend..."
+
+          curl -sS -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            --data-urlencode text="$MESSAGE" \
+            -d parse_mode="HTML"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -51,3 +70,45 @@ jobs:
           protocol: ftp
           local-dir: ./dist/
           server-dir: ./staticFiles/
+
+      - name: Telegram - Frontend Deploy Success
+        if: success()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          MESSAGE="✅ <b>ChipsPocket Frontend Deploy Successful</b>
+
+          🎨 Service: <b>Frontend</b>
+          📦 Version: <code>${{ steps.version.outputs.version }}</code>
+          🏷 Tag: <code>${GITHUB_REF_NAME}</code>
+          🚀 Status: <b>Deployed successfully</b>
+
+          🔗 <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">View GitHub Actions</a>"
+
+          curl -sS -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            --data-urlencode text="$MESSAGE" \
+            -d parse_mode="HTML"
+
+      - name: Telegram - Frontend Deploy Failed
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          MESSAGE="❌ <b>ChipsPocket Frontend Deploy Failed</b>
+
+          🎨 Service: <b>Frontend</b>
+          📦 Version: <code>${{ steps.version.outputs.version }}</code>
+          🏷 Tag: <code>${GITHUB_REF_NAME}</code>
+          💥 Status: <b>Deployment failed</b>
+
+          🔗 <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">View Error Logs</a>"
+
+          curl -sS -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            --data-urlencode text="$MESSAGE" \
+            -d parse_mode="HTML"
